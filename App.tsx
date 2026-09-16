@@ -6,15 +6,13 @@ import HomeScreen from "./src/screens/HomeScreen";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
 import BatchScanScreen from "./src/screens/BatchScanScreen";
 import CategoryResultsScreen from "./src/screens/CategoryResultsScreen";
-import ReviewQueueScreen from "./src/screens/ReviewQueueScreen";
+import ReviewFlowScreen from "./src/screens/ReviewFlowScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import ProPaywallScreen from "./src/screens/ProPaywallScreen";
-import { initDb, logFreedSpace, getProStatus, setProStatus, getHasOnboarded, setHasOnboarded } from "./src/services/storage/db";
+import { initDb, getProStatus, setProStatus, getHasOnboarded, setHasOnboarded } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
-import { deleteAssets } from "./src/services/scanning/photoScanner";
-import { backupAssets } from "./src/services/backup/localBackup";
 import { initIAPConnection, teardownIAPConnection, purchasePro, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
-import { ScannedAsset, UsefulnessScore, ReviewAction, ScanCategoryResult, ScanCategoryId } from "./src/types";
+import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId } from "./src/types";
 
 const Stack = createNativeStackNavigator();
 
@@ -106,50 +104,10 @@ export default function App() {
           {(props) => {
             const { queue } = props.route.params as { queue: { asset: ScannedAsset; score: UsefulnessScore }[] };
             return (
-              <ReviewQueueScreen
+              <ReviewFlowScreen
                 queue={queue}
-                onFinished={async (decisions: ReviewAction[]) => {
-                  const deleted = decisions.filter((d) => d.decision === "delete");
-                  if (deleted.length === 0) {
-                    props.navigation.navigate("Results");
-                    return;
-                  }
-
-                  if (isPro) {
-                    const assetsToBackUp = deleted
-                      .map((d) => queue.find((q) => q.asset.id === d.assetId)?.asset)
-                      .filter((a): a is ScannedAsset => !!a);
-                    await backupAssets(assetsToBackUp).catch((err) => console.warn("backupAssets failed:", err));
-                  }
-
-                  let confirmed = false;
-                  try {
-                    confirmed = await deleteAssets(deleted.map((d) => d.assetId));
-                  } catch (err) {
-                    console.warn("deleteAssets failed:", err);
-                    Alert.alert("Couldn't delete", "Something went wrong removing these items. Nothing was deleted.");
-                    props.navigation.navigate("Results");
-                    return;
-                  }
-
-                  if (!confirmed) {
-                    // User cancelled the OS's own delete confirmation — nothing removed.
-                    props.navigation.navigate("Results");
-                    return;
-                  }
-
-                  const freedBytes = deleted.reduce((sum, d) => {
-                    const item = queue.find((q) => q.asset.id === d.assetId);
-                    return sum + (item?.asset.sizeBytes ?? 0);
-                  }, 0);
-                  logFreedSpace(freedBytes, deleted.length);
-                  Alert.alert(
-                    `${deleted.length} item${deleted.length === 1 ? "" : "s"} moved to Recently Deleted`,
-                    (isPro ? "A local backup copy was kept before removal — manage it from Settings. " : "") +
-                      "iOS keeps them there for 30 days as a safety net, so they're not gone for good yet. To reclaim the space right now, open Photos → Albums → Recently Deleted, select them, and delete permanently."
-                  );
-                  props.navigation.navigate("Results");
-                }}
+                isPro={isPro}
+                onComplete={() => props.navigation.navigate("Results")}
               />
             );
           }}
