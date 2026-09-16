@@ -73,6 +73,7 @@ export default function App() {
         <Stack.Screen name="Scanning" options={{ headerShown: false }}>
           {(props) => (
             <BatchScanScreen
+              isPro={isPro}
               onDone={(results) => {
                 if (results.length === 0) {
                   props.navigation.navigate("Home");

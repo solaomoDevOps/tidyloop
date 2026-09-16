@@ -8,6 +8,7 @@ import { formatBytes } from "../components/format";
 
 interface Props {
   onDone: (results: ScanCategoryResult[]) => void;
+  isPro?: boolean;
 }
 
 interface CategoryUiState {
@@ -21,7 +22,7 @@ interface CategoryUiState {
 
 const EMPTY_STATE: CategoryUiState = { status: "pending", progress: 0, scannedCount: 0, totalCount: 0, reclaimableBytes: 0, itemCount: 0 };
 
-export default function BatchScanScreen({ onDone }: Props) {
+export default function BatchScanScreen({ onDone, isPro }: Props) {
   const [categoryStates, setCategoryStates] = useState<Record<ScanCategoryId, CategoryUiState>>(
     Object.fromEntries(SCAN_CATEGORIES.map((c) => [c.id, { ...EMPTY_STATE } as CategoryUiState])) as Record<ScanCategoryId, CategoryUiState>
   );
@@ -89,6 +90,11 @@ export default function BatchScanScreen({ onDone }: Props) {
   return (
     <LinearGradient colors={["#1b2a4a", "#2a4d8f", "#3f7ce0"]} style={styles.container}>
       <Text style={styles.title}>Scanning your storage</Text>
+      {isPro && (
+        <View style={styles.proBadge}>
+          <Text style={styles.proBadgeText}>⚡ Pro speed — 2x concurrency</Text>
+        </View>
+      )}
       <Text style={styles.reclaimedSoFar}>{formatBytes(displayedTotal)} found so far</Text>
 
       <View style={styles.list}>
@@ -167,6 +173,8 @@ function CategoryRow({ label, icon, state }: { label: string; icon: string; stat
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, paddingTop: 80, gap: 24 },
   title: { fontSize: 24, fontWeight: "700", color: "white", textAlign: "center" },
+  proBadge: { alignSelf: "center", backgroundColor: "rgba(244,185,66,0.22)", borderRadius: 10, paddingVertical: 5, paddingHorizontal: 12, marginTop: 8 },
+  proBadgeText: { color: "#f4b942", fontSize: 12, fontWeight: "700" },
   reclaimedSoFar: { fontSize: 16, color: "#d7e6ff", textAlign: "center" },
   list: { gap: 14, marginTop: 12 },
   footnote: { fontSize: 12, color: "#cfe0ff", textAlign: "center", marginTop: "auto" },

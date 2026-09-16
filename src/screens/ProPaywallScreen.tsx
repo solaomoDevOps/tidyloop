@@ -11,9 +11,9 @@ interface Props {
 }
 
 const FEATURES = [
-  { icon: "⚡", label: "Faster batch hashing", detail: "Scans run at double the concurrency — noticeably faster on large libraries.", color: colors.sky },
-  { icon: "🕒", label: "Scheduled background scans", detail: "Coming soon — Tidyloop will tidy automatically, you just review.", color: colors.green },
-  { icon: "💾", label: "Backup-before-delete", detail: "Every removed item gets a local safety copy on this device first — never truly gone by accident.", color: colors.pink },
+  { icon: "⚡", label: "Faster batch hashing", detail: "Scans run at double the concurrency — noticeably faster on large libraries.", color: colors.sky, comingSoon: false },
+  { icon: "🕒", label: "Scheduled background scans", detail: "Coming soon — Tidyloop will tidy automatically, you just review.", color: colors.green, comingSoon: true },
+  { icon: "💾", label: "Backup-before-delete", detail: "Every removed item gets a local safety copy on this device first — never truly gone by accident.", color: colors.pink, comingSoon: false },
 ];
 
 export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimulateUnlock }: Props) {
@@ -52,13 +52,18 @@ export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimul
               <Text style={styles.featureLabel}>{f.label}</Text>
               <Text style={styles.featureDetail}>{f.detail}</Text>
             </View>
+            {isPro && (
+              <Text style={[styles.statusTag, f.comingSoon ? styles.statusTagSoon : styles.statusTagActive]}>
+                {f.comingSoon ? "Soon" : "✓ Active"}
+              </Text>
+            )}
           </View>
         ))}
       </View>
 
       {isPro ? (
         <View style={styles.thanksBox}>
-          <Text style={styles.thanksText}>You're on Pro. Thank you for supporting Tidyloop.</Text>
+          <Text style={styles.thanksText}>You're on Pro — the checklist above shows what's active right now.</Text>
         </View>
       ) : (
         <>
@@ -97,6 +102,9 @@ const styles = StyleSheet.create({
   featureText: { flex: 1 },
   featureLabel: { fontSize: 15, fontWeight: "700", color: "#1b2a4a" },
   featureDetail: { fontSize: 13, color: "#5a6482", marginTop: 2 },
+  statusTag: { fontSize: 11, fontWeight: "700", paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, overflow: "hidden" },
+  statusTagActive: { color: colors.green, backgroundColor: colors.green + "1f" },
+  statusTagSoon: { color: "#a5730f", backgroundColor: "#f4b94222" },
   primaryButton: { backgroundColor: "#2a6df4", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 40, marginTop: 8, width: "100%", alignItems: "center" },
   primaryButtonText: { color: "white", fontSize: 16, fontWeight: "700" },
   restoreLink: { paddingVertical: 10 },
