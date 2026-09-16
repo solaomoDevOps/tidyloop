@@ -3,12 +3,13 @@ import { Alert } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "./src/screens/HomeScreen";
+import OnboardingScreen from "./src/screens/OnboardingScreen";
 import BatchScanScreen from "./src/screens/BatchScanScreen";
 import CategoryResultsScreen from "./src/screens/CategoryResultsScreen";
 import ReviewQueueScreen from "./src/screens/ReviewQueueScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import ProPaywallScreen from "./src/screens/ProPaywallScreen";
-import { initDb, logFreedSpace, getProStatus, setProStatus } from "./src/services/storage/db";
+import { initDb, logFreedSpace, getProStatus, setProStatus, getHasOnboarded, setHasOnboarded } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { deleteAssets } from "./src/services/scanning/photoScanner";
 import { initIAPConnection, teardownIAPConnection, purchasePro, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
@@ -19,6 +20,7 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [categoryResults, setCategoryResults] = useState<ScanCategoryResult[]>([]);
   const [isPro, setIsPro] = useState(false);
+  const [hasOnboarded] = useState(() => getHasOnboarded());
 
   useEffect(() => {
     initDb();
@@ -51,7 +53,18 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator initialRouteName={hasOnboarded ? "Home" : "Onboarding"}>
+        <Stack.Screen name="Onboarding" options={{ headerShown: false }}>
+          {(props) => (
+            <OnboardingScreen
+              onDone={() => {
+                setHasOnboarded(true);
+                props.navigation.replace("Home");
+              }}
+            />
+          )}
+        </Stack.Screen>
+
         <Stack.Screen name="Home" options={{ title: "Tidyloop" }}>
           {(props) => <HomeScreen onStartScan={() => props.navigation.navigate("Scanning")} onOpenSettings={() => props.navigation.navigate("Settings")} />}
         </Stack.Screen>

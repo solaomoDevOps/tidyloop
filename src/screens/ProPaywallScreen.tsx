@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, Animated, Easing } from "react-native";
+import { colors } from "../theme/colors";
 
 interface Props {
   isPro: boolean;
@@ -10,9 +11,9 @@ interface Props {
 }
 
 const FEATURES = [
-  { icon: "⚡", label: "Faster batch hashing", detail: "Scan huge libraries in a fraction of the time." },
-  { icon: "🕒", label: "Scheduled background scans", detail: "Tidyloop tidies automatically — you just review." },
-  { icon: "☁️", label: "Backup-before-delete", detail: "Every removed item is backed up to iCloud/Drive first, for extra peace of mind." },
+  { icon: "⚡", label: "Faster batch hashing", detail: "Scan huge libraries in a fraction of the time.", color: colors.sky },
+  { icon: "🕒", label: "Scheduled background scans", detail: "Tidyloop tidies automatically — you just review.", color: colors.green },
+  { icon: "☁️", label: "Backup-before-delete", detail: "Every removed item is backed up to iCloud/Drive first, for extra peace of mind.", color: colors.pink },
 ];
 
 export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimulateUnlock }: Props) {
@@ -44,7 +45,9 @@ export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimul
       <View style={styles.featureList}>
         {FEATURES.map((f) => (
           <View key={f.label} style={styles.featureRow}>
-            <Text style={styles.featureIcon}>{f.icon}</Text>
+            <View style={[styles.featureIconBadge, { backgroundColor: f.color + "22" }]}>
+              <Text style={styles.featureIcon}>{f.icon}</Text>
+            </View>
             <View style={styles.featureText}>
               <Text style={styles.featureLabel}>{f.label}</Text>
               <Text style={styles.featureDetail}>{f.detail}</Text>
@@ -88,8 +91,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "800", color: "#1b2a4a" },
   subtitle: { fontSize: 14, color: "#5a6482", marginBottom: 8 },
   featureList: { width: "100%", gap: 16, marginVertical: 12 },
-  featureRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
-  featureIcon: { fontSize: 22 },
+  featureRow: { flexDirection: "row", gap: 12, alignItems: "center" },
+  featureIconBadge: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  featureIcon: { fontSize: 20 },
   featureText: { flex: 1 },
   featureLabel: { fontSize: 15, fontWeight: "700", color: "#1b2a4a" },
   featureDetail: { fontSize: 13, color: "#5a6482", marginTop: 2 },

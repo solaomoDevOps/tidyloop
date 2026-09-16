@@ -3,6 +3,7 @@ import { View, Text, Image, Pressable, StyleSheet, Animated, Easing } from "reac
 import { LinearGradient } from "expo-linear-gradient";
 import { getTotalFreedBytes } from "../services/storage/db";
 import { formatBytes } from "../components/format";
+import { colors } from "../theme/colors";
 
 interface Props {
   onStartScan: () => void;
@@ -64,6 +65,12 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
 
   return (
     <LinearGradient colors={["#eef3ff", "#ffffff"]} style={styles.container}>
+      <View style={styles.blobLayer} pointerEvents="none">
+        <View style={[styles.blob, styles.blobBlue]} />
+        <View style={[styles.blob, styles.blobPink]} />
+        <View style={[styles.blob, styles.blobGold]} />
+      </View>
+
       <Pressable style={styles.settingsLink} onPress={onOpenSettings}>
         <Text style={styles.settingsLinkText}>Settings</Text>
       </Pressable>
@@ -110,6 +117,11 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, justifyContent: "center", alignItems: "center", gap: 12 },
+  blobLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  blob: { position: "absolute", borderRadius: 999 },
+  blobBlue: { width: 260, height: 260, backgroundColor: colors.blue, opacity: 0.12, top: -80, left: -90 },
+  blobPink: { width: 220, height: 220, backgroundColor: colors.pink, opacity: 0.1, bottom: -60, right: -70 },
+  blobGold: { width: 140, height: 140, backgroundColor: colors.gold, opacity: 0.14, top: "38%", right: -50 },
   logo: { width: 190, height: 125 },
   hero: { width: 160, height: 160 },
   subtitle: { fontSize: 16, color: "#5a6482", marginBottom: 12, textAlign: "center" },

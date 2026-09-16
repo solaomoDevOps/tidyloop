@@ -136,3 +136,18 @@ export function setProStatus(isPro: boolean): void {
     [APP_STATE_KEY_PRO, isPro ? "true" : "false"]
   );
 }
+
+const APP_STATE_KEY_ONBOARDED = "hasOnboarded";
+
+export function getHasOnboarded(): boolean {
+  const row = db.getFirstSync<{ value: string }>(`SELECT value FROM app_state WHERE key = ?;`, [APP_STATE_KEY_ONBOARDED]);
+  return row?.value === "true";
+}
+
+export function setHasOnboarded(value: boolean): void {
+  db.runSync(
+    `INSERT INTO app_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+    [APP_STATE_KEY_ONBOARDED, value ? "true" : "false"]
+  );
+}

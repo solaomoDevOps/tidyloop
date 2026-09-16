@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, ScrollView, Animated, Easing } from 
 import { ScanCategoryResult, ScanCategoryId } from "../types";
 import { SCAN_CATEGORIES } from "../services/scanning/categoryScanner";
 import { formatBytes } from "../components/format";
+import { categoryColors } from "../theme/colors";
 
 interface Props {
   results: ScanCategoryResult[];
@@ -38,6 +39,7 @@ export default function CategoryResultsScreen({ results, onReviewCategory }: Pro
             key={result.categoryId}
             delay={i * 90}
             icon={def.icon}
+            color={categoryColors[result.categoryId] ?? "#2a6df4"}
             label={def.label}
             isEmpty={isEmpty}
             itemCount={result.assets.length}
@@ -53,6 +55,7 @@ export default function CategoryResultsScreen({ results, onReviewCategory }: Pro
 function ResultCard({
   delay,
   icon,
+  color,
   label,
   isEmpty,
   itemCount,
@@ -61,6 +64,7 @@ function ResultCard({
 }: {
   delay: number;
   icon: string;
+  color: string;
   label: string;
   isEmpty: boolean;
   itemCount: number;
@@ -95,7 +99,9 @@ function ResultCard({
       ]}
     >
       <View style={styles.cardRow}>
-        <Text style={styles.cardIcon}>{icon}</Text>
+        <View style={[styles.iconBadge, { backgroundColor: color + "1f" }]}>
+          <Text style={styles.cardIcon}>{icon}</Text>
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>{label}</Text>
           <Text style={styles.cardMeta}>
@@ -104,7 +110,7 @@ function ResultCard({
         </View>
         {!isEmpty && (
           <Pressable
-            style={styles.reviewButton}
+            style={[styles.reviewButton, { backgroundColor: color }]}
             onPress={onReview}
             onPressIn={() => Animated.spring(pressScale, { toValue: 0.96, useNativeDriver: true }).start()}
             onPressOut={() => Animated.spring(pressScale, { toValue: 1, useNativeDriver: true, friction: 4 }).start()}
@@ -125,7 +131,8 @@ const styles = StyleSheet.create({
   card: { backgroundColor: "white", borderRadius: 18, padding: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   cardEmpty: { opacity: 0.6 },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  cardIcon: { fontSize: 28 },
+  iconBadge: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  cardIcon: { fontSize: 24 },
   cardTitle: { fontSize: 16, fontWeight: "700", color: "#1b2a4a" },
   cardMeta: { fontSize: 13, color: "#8189a0", marginTop: 2 },
   reviewButton: { backgroundColor: "#3f7ce0", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
