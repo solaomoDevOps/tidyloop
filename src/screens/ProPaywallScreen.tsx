@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, Animated, Easing } from "react-native";
 import { colors } from "../theme/colors";
+import { getProOffering, isIAPConfigured } from "../services/payments/iap";
 
 interface Props {
   isPro: boolean;
@@ -16,8 +17,22 @@ const FEATURES = [
   { icon: "💾", label: "Backup-before-delete", detail: "Every removed item gets a local safety copy on this device first — never truly gone by accident.", color: colors.pink, comingSoon: false },
 ];
 
+const COMPARISON: { label: string; free: boolean; pro: boolean | "soon" }[] = [
+  { label: "Unlimited scans & review", free: true, pro: true },
+  { label: "Duplicate & clutter detection", free: true, pro: true },
+  { label: "2x faster batch hashing", free: false, pro: true },
+  { label: "Local backup before delete", free: false, pro: true },
+  { label: "Scheduled background scans", free: false, pro: "soon" },
+];
+
+function ComparisonCell({ value }: { value: boolean | "soon" }) {
+  if (value === "soon") return <Text style={[styles.cellMark, styles.cellSoon]}>Soon</Text>;
+  return <Text style={[styles.cellMark, value ? styles.cellYes : styles.cellNo]}>{value ? "✓" : "—"}</Text>;
+}
+
 export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimulateUnlock }: Props) {
   const heroAnim = useRef(new Animated.Value(0)).current;
+  const [priceString, setPriceString] = useState<string | null>(null);
 
   useEffect(() => {
     Animated.timing(heroAnim, {
@@ -27,6 +42,15 @@ export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimul
       useNativeDriver: true,
     }).start();
   }, []);
+
+  useEffect(() => {
+    if (!isIAPConfigured) return;
+    getProOffering()
+      .then((offering) => setPriceString(offering?.availablePackages[0]?.product.priceString ?? null))
+      .catch((err) => console.warn("getProOffering failed:", err));
+  }, []);
+
+  const priceDisplay = !isIAPConfigured ? "Price set at checkout" : priceString ?? "Loading price…";
 
   const heroOpacity = heroAnim;
   const heroScale = heroAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
@@ -41,6 +65,32 @@ export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimul
 
       <Text style={styles.title}>Tidyloop Pro</Text>
       <Text style={styles.subtitle}>One-time unlock. No subscription, ever.</Text>
+
+      {!isPro && (
+        <View style={styles.priceBlock}>
+          <Text style={styles.priceText}>{priceDisplay}</Text>
+          <Text style={styles.priceCaption}>one-time purchase, not a subscription</Text>
+        </View>
+      )}
+
+      <View style={styles.table}>
+        <View style={styles.tableHeaderRow}>
+          <View style={styles.tableLabelCol} />
+          <Text style={[styles.tableHeaderCell, styles.colCell]}>Free</Text>
+          <Text style={[styles.tableHeaderCell, styles.colCell]}>Pro</Text>
+        </View>
+        {COMPARISON.map((row) => (
+          <View key={row.label} style={styles.tableRow}>
+            <Text style={styles.tableLabel}>{row.label}</Text>
+            <View style={styles.colCell}>
+              <ComparisonCell value={row.free} />
+            </View>
+            <View style={styles.colCell}>
+              <ComparisonCell value={row.pro} />
+            </View>
+          </View>
+        ))}
+      </View>
 
       <View style={styles.featureList}>
         {FEATURES.map((f) => (
@@ -95,6 +145,20 @@ const styles = StyleSheet.create({
   hero: { width: 180, height: 180 },
   title: { fontSize: 26, fontWeight: "800", color: "#1b2a4a" },
   subtitle: { fontSize: 14, color: "#5a6482", marginBottom: 8 },
+  priceBlock: { alignItems: "center", marginTop: 4, marginBottom: 4 },
+  priceText: { fontSize: 30, fontWeight: "800", color: colors.blue },
+  priceCaption: { fontSize: 12, color: "#8a92a8", marginTop: 2 },
+  table: { width: "100%", borderRadius: 16, backgroundColor: "white", padding: 14, marginTop: 8, gap: 10, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  tableHeaderRow: { flexDirection: "row", alignItems: "center", paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: "#eef1f8" },
+  tableLabelCol: { flex: 1 },
+  tableHeaderCell: { fontSize: 12, fontWeight: "700", color: "#8a92a8", textAlign: "center" },
+  tableRow: { flexDirection: "row", alignItems: "center" },
+  tableLabel: { flex: 1, fontSize: 13, color: "#1b2a4a" },
+  colCell: { width: 56, alignItems: "center" },
+  cellMark: { fontSize: 14, fontWeight: "700" },
+  cellYes: { color: colors.green },
+  cellNo: { color: "#c3c9d6" },
+  cellSoon: { color: "#a5730f", fontSize: 11 },
   featureList: { width: "100%", gap: 16, marginVertical: 12 },
   featureRow: { flexDirection: "row", gap: 12, alignItems: "center" },
   featureIconBadge: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },

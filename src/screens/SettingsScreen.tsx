@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from "react-native";
 import { getBackupSummary } from "../services/storage/db";
 import { clearAllBackups } from "../services/backup/localBackup";
 import { formatBytes } from "../components/format";
@@ -50,7 +50,7 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
       <Text style={styles.header}>Settings</Text>
 
       <View style={styles.section}>
@@ -97,16 +97,25 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
           server, including with Pro enabled.
         </Text>
       </View>
-    </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>About</Text>
+        <Text style={styles.body}>Tidyloop is a product of SiliconChase.</Text>
+        <Text style={styles.aboutMeta}>Founder & owner: Dr. Simeon Olaomo</Text>
+        <Text style={styles.aboutMeta}>Version 1.0.0</Text>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, gap: 24 },
+  scrollView: { flex: 1 },
+  container: { padding: 20, paddingBottom: 48, gap: 24 },
   header: { fontSize: 24, fontWeight: "700" },
   section: { gap: 8 },
   sectionTitle: { fontSize: 16, fontWeight: "600" },
   body: { fontSize: 14, color: "#555" },
+  aboutMeta: { fontSize: 12, color: "#8a92a8" },
   primaryButton: { backgroundColor: "#2a6df4", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
   primaryButtonText: { color: "white", fontWeight: "600" },
   secondaryButton: { borderWidth: 1, borderColor: "#2a6df4", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
