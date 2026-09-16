@@ -1,24 +1,16 @@
 /**
  * photoScanner.ts
  *
- * IMPORTANT PLATFORM REALITY — read before extending this file:
+ * IMPORTANT PLATFORM REALITY: iOS sandboxes third-party apps hard. A
+ * "storage cleaner" on iOS can only ever see the Photos library (via
+ * expo-media-library, with permission) and its own Documents/Cache dirs.
  *
- * iOS sandboxes third-party apps hard. A "storage cleaner" on iOS can only
- * ever see the Photos library (via expo-media-library, with permission)
- * and its own Documents/Cache dirs — nothing else.
- *
- * NATIVE MODULE NOTICE: this file now hashes via react-native-skia
- * (duplicateDetector.ts) and expo-video-thumbnails, and hashes real file
- * bytes via expo-crypto (exactHash.ts). None of these work in Expo Go —
- * a development build is required from here on (`npx expo run:ios` /
- * `npx expo run:android`, or an EAS dev build).
- *
- * SPEED: processing is done in small concurrent batches (CONCURRENCY)
- * rather than one asset fully at a time — hashing is I/O + native-call
- * bound, so a handful of assets in flight at once is meaningfully faster
- * than a strictly sequential for-loop, without needing real threads.
- * Previously-hashed assets (unchanged modifiedAt since last scan) are
- * pulled from the local cache instead of being re-hashed at all.
+ * CRASH FIX (real, not theoretical): hashing now resizes each photo to a
+ * tiny thumbnail via expo-image-manipulator BEFORE Skia touches it. Feeding
+ * Skia a full-resolution image (potentially 20+ MB decoded) 6-at-a-time
+ * concurrently across a large library was exhausting memory and getting
+ * the app silently killed by iOS mid-scan — which looked like the scan
+ * "just vanishing" with no error, no report. Concurrency is also reduced.
  */
 
 import * as MediaLibrary from "expo-media-library/legacy";
@@ -27,9 +19,10 @@ import { ScannedAsset } from "../../types";
 import { computeDHash } from "./duplicateDetector";
 import { computeExactHash } from "./exactHash";
 import { getVideoThumbnailUri } from "./videoThumbnail";
+import { getPhotoThumbnailUri } from "./photoThumbnail";
 import { getCachedAssetsMap, upsertAssets, CachedAssetMeta } from "../storage/db";
 
-const CONCURRENCY = 6;
+const CONCURRENCY = 3; // lowered from 6 — hashing is memory-bound, not just I/O-bound
 
 const COMMON_SCREENSHOT_RESOLUTIONS: Array<[number, number]> = [
   [1170, 2532], [1179, 2556], [1284, 2778], [1290, 2796],
@@ -57,16 +50,12 @@ export async function scanPhotoLibrary(
   let scannedCount = 0;
   let pageNumber = 0;
 
-  // Hard safety cap: even if the pagination cursor never reports "no more
-  // pages" correctly, this guarantees the loop terminates instead of
-  // re-fetching forever. 200 per page, generous headroom over any real
-  // photo library size.
   const MAX_PAGES = 2000;
 
   do {
     pageNumber++;
     if (pageNumber > MAX_PAGES) {
-      console.warn(`scanPhotoLibrary: hit MAX_PAGES safety cap (${MAX_PAGES}) — stopping. This means pagination never reported completion; investigate the expo-media-library version in use.`);
+      console.warn(`scanPhotoLibrary: hit MAX_PAGES safety cap (${MAX_PAGES}) — stopping.`);
       break;
     }
 
@@ -76,15 +65,10 @@ export async function scanPhotoLibrary(
       mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
     });
 
-    // Use the library's own reported total once, rather than accumulating
-    // it per page — accumulating is what let a stuck cursor make the
-    // denominator grow without bound.
     if (pageNumber === 1) {
       total = (page as any).totalCount ?? page.assets.length;
     }
 
-    // If an entire page is assets we've already processed, the cursor is
-    // stuck re-serving the same page — stop instead of looping forever.
     const newAssetsInPage = page.assets.filter((a) => a && !seenIds.has(a.id));
     if (page.assets.length > 0 && newAssetsInPage.length === 0) {
       console.warn("scanPhotoLibrary: page returned no new assets — pagination cursor appears stuck, stopping.");
@@ -96,10 +80,21 @@ export async function scanPhotoLibrary(
     const pageResults = await mapWithConcurrency(newAssetsInPage, CONCURRENCY, async (asset) => {
       if (!asset) return null;
       seenIds.add(asset.id);
-      const scanned = await processAsset(asset, cache);
-      scannedCount++;
-      onProgress?.(scannedCount, total);
-      return scanned;
+      // A single asset failing (corrupt file, decode error, anything) must
+      // never take down the whole scan — catch here and return a minimal
+      // record instead of letting the exception propagate and silently
+      // kill the entire batch.
+      try {
+        const scanned = await processAsset(asset, cache);
+        scannedCount++;
+        onProgress?.(scannedCount, total);
+        return scanned;
+      } catch (err) {
+        console.warn("processAsset failed entirely for", asset.id, err);
+        scannedCount++;
+        onProgress?.(scannedCount, total);
+        return null;
+      }
     });
 
     const validResults = pageResults.filter((r): r is ScannedAsset => r !== null);
@@ -121,8 +116,6 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
     console.warn("getAssetInfoAsync failed for", asset.id, err);
   }
 
-  // localUri is a real file:// path Skia/crypto can actually read.
-  // ph:// (iOS) / content:// (Android) URIs are not directly decodable.
   const localUri: string | undefined = info?.localUri ?? (asset.uri.startsWith("file://") ? asset.uri : undefined);
 
   let fileInfo: any = { exists: false };
@@ -153,8 +146,6 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
     screenshotLikely: isLikelyScreenshot(asset.filename, asset.width, asset.height),
   };
 
-  // Cache check: if this exact asset hasn't been modified since the last
-  // scan, reuse its hashes instead of recomputing them.
   const cached = cache.get(asset.id);
   if (cached && cached.modifiedAt === scanned.modifiedAt) {
     scanned.perceptualHash = cached.perceptualHash ?? undefined;
@@ -163,15 +154,23 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
   }
 
   if (!localUri) {
-    return scanned; // nothing we can hash without a real file path
+    return scanned;
   }
 
+  // Perceptual hash: always go through a small thumbnail first, never hand
+  // Skia the original full-resolution file. This is the core crash fix.
   try {
     if (isVideo) {
-      const thumbUri = await getVideoThumbnailUri(localUri);
-      if (thumbUri) scanned.perceptualHash = await computeDHash(thumbUri);
+      const frameUri = await getVideoThumbnailUri(localUri);
+      if (frameUri) {
+        const smallUri = await getPhotoThumbnailUri(frameUri);
+        scanned.perceptualHash = await computeDHash(smallUri ?? frameUri);
+      }
     } else {
-      scanned.perceptualHash = await computeDHash(localUri);
+      const smallUri = await getPhotoThumbnailUri(localUri);
+      if (smallUri) {
+        scanned.perceptualHash = await computeDHash(smallUri);
+      }
     }
   } catch (hashErr) {
     console.warn("Perceptual hashing failed for", asset.id, hashErr);
@@ -186,9 +185,6 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
   return scanned;
 }
 
-/** Runs `fn` over `items` with at most `limit` in flight at once, preserving
- * input order in the returned array. A small hand-rolled pool — no extra
- * dependency needed for something this contained. */
 async function mapWithConcurrency<T, R>(
   items: T[],
   limit: number,

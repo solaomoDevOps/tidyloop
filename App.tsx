@@ -58,6 +58,10 @@ export default function App() {
           {(props) => (
             <BatchScanScreen
               onDone={(results) => {
+                if (results.length === 0) {
+                  props.navigation.navigate("Home");
+                  return;
+                }
                 setCategoryResults(results);
                 props.navigation.replace("Results");
               }}

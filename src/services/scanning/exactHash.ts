@@ -16,7 +16,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Crypto from "expo-crypto";
 
-const EXACT_HASH_MAX_BYTES = 25 * 1024 * 1024; // 25MB — covers virtually all photos, excludes most video
+const EXACT_HASH_MAX_BYTES = 10 * 1024 * 1024; // lowered from 25MB — base64-encoding a large file in JS is slow and memory-heavy; near-duplicate hashing still catches large-file matches
 
 export async function computeExactHash(uri: string, sizeBytes: number): Promise<string | undefined> {
   if (sizeBytes <= 0 || sizeBytes > EXACT_HASH_MAX_BYTES) {
