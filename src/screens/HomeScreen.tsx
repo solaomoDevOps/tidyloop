@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Animated, Easing } from "react-native";
+import { View, Text, Image, Pressable, StyleSheet, Animated, Easing } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { getTotalFreedBytes } from "../services/storage/db";
 import { formatBytes } from "../components/format";
@@ -52,6 +52,7 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
       </Pressable>
 
       <Animated.View style={{ opacity: titleOpacity, transform: [{ translateY: titleTranslate }], alignItems: "center" }}>
+        <Image source={require("../../assets/illustrations/hero-holding-phone.png")} style={styles.hero} resizeMode="contain" />
         <Text style={styles.title}>Tidyloop</Text>
         <Text style={styles.subtitle}>Free up space. Never lose what matters.</Text>
       </Animated.View>
@@ -83,6 +84,7 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, justifyContent: "center", alignItems: "center", gap: 16 },
+  hero: { width: 160, height: 160, marginBottom: 4 },
   title: { fontSize: 34, fontWeight: "800", color: "#1b2a4a" },
   subtitle: { fontSize: 16, color: "#5a6482", marginBottom: 12, textAlign: "center" },
   freedStat: { fontSize: 14, color: "#2a8f4f", textAlign: "center", marginBottom: 8 },

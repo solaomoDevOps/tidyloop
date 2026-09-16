@@ -21,12 +21,11 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 interface Props {
   peopleHelpedThisMonth: number;
   isPro: boolean;
-  onUpgrade: () => void;
-  onRestore: () => void;
+  onViewPro: () => void;
   onRequestFreeUnlock: () => void;
 }
 
-export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onUpgrade, onRestore, onRequestFreeUnlock }: Props) {
+export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro, onRequestFreeUnlock }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Settings</Text>
@@ -36,16 +35,9 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onUpgrade
         <Text style={styles.body}>
           {isPro ? "You're on Tidyloop Pro. Thank you." : "Free plan — full scanning and review, no caps."}
         </Text>
-        {!isPro && (
-          <Pressable style={styles.primaryButton} onPress={onUpgrade}>
-            <Text style={styles.primaryButtonText}>Unlock Pro — one-time, no subscription</Text>
-          </Pressable>
-        )}
-        {!isPro && (
-          <Pressable style={styles.restoreLink} onPress={onRestore}>
-            <Text style={styles.restoreLinkText}>Restore previous purchase</Text>
-          </Pressable>
-        )}
+        <Pressable style={styles.primaryButton} onPress={onViewPro}>
+          <Text style={styles.primaryButtonText}>{isPro ? "Manage Pro" : "See what's in Pro"}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.section}>
@@ -78,8 +70,6 @@ const styles = StyleSheet.create({
   body: { fontSize: 14, color: "#555" },
   primaryButton: { backgroundColor: "#2a6df4", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
   primaryButtonText: { color: "white", fontWeight: "600" },
-  restoreLink: { alignItems: "center", paddingVertical: 6 },
-  restoreLinkText: { color: "#2a6df4", fontSize: 13, textDecorationLine: "underline" },
   secondaryButton: { borderWidth: 1, borderColor: "#2a6df4", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
   secondaryButtonText: { color: "#2a6df4", fontWeight: "600" },
 });

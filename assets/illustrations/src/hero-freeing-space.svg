@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+  <defs>
+    <linearGradient id="glow2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#eaf1ff"/>
+      <stop offset="100%" stop-color="#f7f8fc"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="150" cy="128" r="98" fill="url(#glow2)"/>
+
+  <!-- faded cleared-file icons drifting away -->
+  <g opacity="0.7">
+    <rect x="44" y="66" width="30" height="38" rx="4" fill="#c9d3e6" transform="rotate(-12 59 85)"/>
+    <path d="M52 78 L66 92 M66 78 L52 92" stroke="#f7f8fc" stroke-width="3" stroke-linecap="round" transform="rotate(-12 59 85)"/>
+  </g>
+  <g opacity="0.5">
+    <rect x="28" y="118" width="22" height="28" rx="4" fill="#c9d3e6" transform="rotate(10 39 132)"/>
+  </g>
+
+  <!-- mini ascending bar chart: space reclaimed -->
+  <rect x="38" y="252" width="12" height="18" rx="2" fill="#b9cdfa"/>
+  <rect x="54" y="240" width="12" height="30" rx="2" fill="#7fa8f7"/>
+  <rect x="70" y="226" width="12" height="44" rx="2" fill="#2a8f4f"/>
+
+  <!-- ground shadow -->
+  <ellipse cx="150" cy="272" rx="70" ry="11" fill="#dbe2f0"/>
+
+  <!-- seated crossed legs -->
+  <circle cx="100" cy="230" r="17" fill="#1b2a4a"/>
+  <circle cx="200" cy="230" r="17" fill="#1b2a4a"/>
+  <path d="M110 232 Q150 214 190 232 L193 258 Q193 268 183 268 L117 268 Q107 268 107 258 Z" fill="#1b2a4a"/>
+
+  <!-- torso -->
+  <path d="M116 158 Q116 136 150 136 Q184 136 184 158 L188 214 Q188 222 180 222 L120 222 Q112 222 112 214 Z" fill="#1b2a4a"/>
+
+  <!-- right arm resting near knee -->
+  <path d="M182 168 Q200 178 199 200 Q199 210 190 209 Q182 208 183 198 Q184 182 174 174 Z" fill="#1b2a4a"/>
+  <circle cx="196" cy="206" r="8" fill="#1b2a4a"/>
+
+  <!-- left arm bent up holding phone -->
+  <path d="M118 158 Q98 162 96 186 Q95 196 104 198 Q112 199 114 190 Q117 172 128 165 Z" fill="#1b2a4a"/>
+
+  <!-- head -->
+  <circle cx="150" cy="98" r="34" fill="#1b2a4a"/>
+  <!-- curious eyebrow -->
+  <path d="M131 82 Q138 77 146 80" stroke="#1b2a4a" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- face -->
+  <circle cx="139" cy="94" r="3.4" fill="#eef2fb"/>
+  <circle cx="161" cy="94" r="3.4" fill="#eef2fb"/>
+  <path d="M138 109 Q150 114 160 109" stroke="#eef2fb" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- phone with storage gauge -->
+  <rect x="122" y="150" width="56" height="92" rx="10" fill="#2a6df4"/>
+  <rect x="129" y="160" width="42" height="72" rx="4" fill="#f7f8fc"/>
+  <circle cx="150" cy="193" r="16" fill="none" stroke="#dbe2f0" stroke-width="5"/>
+  <circle cx="150" cy="193" r="16" fill="none" stroke="#2a8f4f" stroke-width="5"
+    stroke-dasharray="65 36" stroke-linecap="round" transform="rotate(-90 150 193)"/>
+  <path d="M143 207 L149 213 L159 200" stroke="#2a8f4f" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- freed-space checkmark badge -->
+  <circle cx="230" cy="96" r="20" fill="#2a8f4f"/>
+  <path d="M221 96 L227 103 L240 88" stroke="#f7f8fc" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

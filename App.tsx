@@ -7,10 +7,11 @@ import BatchScanScreen from "./src/screens/BatchScanScreen";
 import CategoryResultsScreen from "./src/screens/CategoryResultsScreen";
 import ReviewQueueScreen from "./src/screens/ReviewQueueScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
-import { initDb, logFreedSpace, getProStatus } from "./src/services/storage/db";
+import ProPaywallScreen from "./src/screens/ProPaywallScreen";
+import { initDb, logFreedSpace, getProStatus, setProStatus } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { deleteAssets } from "./src/services/scanning/photoScanner";
-import { initIAPConnection, teardownIAPConnection, purchasePro, restorePurchases } from "./src/services/payments/iap";
+import { initIAPConnection, teardownIAPConnection, purchasePro, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
 import { ScannedAsset, UsefulnessScore, ReviewAction, ScanCategoryResult, ScanCategoryId } from "./src/types";
 
 const Stack = createNativeStackNavigator();
@@ -132,12 +133,11 @@ export default function App() {
         </Stack.Screen>
 
         <Stack.Screen name="Settings" options={{ title: "Settings" }}>
-          {() => (
+          {(props) => (
             <SettingsScreen
               peopleHelpedThisMonth={0}
               isPro={isPro}
-              onUpgrade={handleUpgrade}
-              onRestore={handleRestore}
+              onViewPro={() => props.navigation.navigate("Pro")}
               onRequestFreeUnlock={() => {
                 Alert.alert(
                   "Request received",
@@ -146,6 +146,24 @@ export default function App() {
                 /* TODO: replace with a real backend queue once one exists;
                    for now this is a local acknowledgment only. */
               }}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="Pro" options={{ title: "Tidyloop Pro" }}>
+          {() => (
+            <ProPaywallScreen
+              isPro={isPro}
+              onUpgrade={handleUpgrade}
+              onRestore={handleRestore}
+              devSimulateUnlock={
+                __DEV__ && !isIAPConfigured
+                  ? () => {
+                      setProStatus(true);
+                      setIsPro(true);
+                    }
+                  : undefined
+              }
             />
           )}
         </Stack.Screen>

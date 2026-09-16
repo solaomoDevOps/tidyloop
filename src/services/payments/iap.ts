@@ -35,6 +35,11 @@ const REVENUECAT_API_KEY = Platform.select({
 // RevenueCat dashboard.
 const PRO_ENTITLEMENT_ID = "pro";
 
+// Lets the UI (the Pro paywall screen) tell a real purchase flow apart
+// from an unconfigured dev build, e.g. to offer a dev-only unlock so Pro
+// gated behavior stays testable before RevenueCat keys are set.
+export const isIAPConfigured = !!REVENUECAT_API_KEY && !REVENUECAT_API_KEY.includes("REPLACE_WITH");
+
 let listenerAdded = false;
 
 export async function initIAPConnection(onProUnlocked: () => void): Promise<void> {
