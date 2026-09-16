@@ -45,6 +45,13 @@ db.execSync(`
     bytesFreed INTEGER NOT NULL,
     itemCount INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS backups (
+    assetId TEXT PRIMARY KEY,
+    backupUri TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    sizeBytes INTEGER NOT NULL,
+    backedUpAt INTEGER NOT NULL
+  );
 `);
 
 // Kept as a no-op so the existing App.tsx call site (`initDb()` in a
@@ -150,4 +157,36 @@ export function setHasOnboarded(value: boolean): void {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
     [APP_STATE_KEY_ONBOARDED, value ? "true" : "false"]
   );
+}
+
+export interface BackupEntry {
+  assetId: string;
+  backupUri: string;
+  filename: string;
+  sizeBytes: number;
+  backedUpAt: number;
+}
+
+export function recordBackup(entry: BackupEntry): void {
+  db.runSync(
+    `INSERT INTO backups (assetId, backupUri, filename, sizeBytes, backedUpAt) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(assetId) DO UPDATE SET backupUri=excluded.backupUri, filename=excluded.filename,
+       sizeBytes=excluded.sizeBytes, backedUpAt=excluded.backedUpAt;`,
+    [entry.assetId, entry.backupUri, entry.filename, entry.sizeBytes, entry.backedUpAt]
+  );
+}
+
+export function getAllBackups(): BackupEntry[] {
+  return db.getAllSync<BackupEntry>(`SELECT assetId, backupUri, filename, sizeBytes, backedUpAt FROM backups;`);
+}
+
+export function getBackupSummary(): { count: number; totalBytes: number } {
+  const row = db.getFirstSync<{ count: number; total: number | null }>(
+    `SELECT COUNT(*) as count, SUM(sizeBytes) as total FROM backups;`
+  );
+  return { count: row?.count ?? 0, totalBytes: row?.total ?? 0 };
+}
+
+export function clearBackupRecords(): void {
+  db.runSync(`DELETE FROM backups;`);
 }

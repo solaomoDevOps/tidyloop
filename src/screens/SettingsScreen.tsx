@@ -1,5 +1,8 @@
-import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
+import { getBackupSummary } from "../services/storage/db";
+import { clearAllBackups } from "../services/backup/localBackup";
+import { formatBytes } from "../components/format";
 
 /**
  * The generosity model, made concrete (see README "Monetization &
@@ -10,8 +13,8 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
  *    frustrate you into paying — that's the exact pattern the market
  *    research flagged as the #1 complaint in this category.
  *  - Pro is a single one-time unlock (not a subscription): faster batch
- *    hashing, scheduled background scans, and iCloud/Drive backup-before-
- *    delete for extra safety.
+ *    hashing, scheduled background scans (coming soon), and a local
+ *    backup-before-delete safety copy.
  *  - "Pay it forward": every Pro purchase funds one free Pro unlock for
  *    someone on the waitlist who taps "I can't afford this." No ads sold
  *    against that list, no data collected beyond a device token to grant
@@ -26,6 +29,26 @@ interface Props {
 }
 
 export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro, onRequestFreeUnlock }: Props) {
+  const [backupSummary, setBackupSummary] = useState(() => getBackupSummary());
+
+  function handleClearBackups() {
+    Alert.alert(
+      "Clear local backups?",
+      `This permanently deletes the ${backupSummary.count} backed-up item${backupSummary.count === 1 ? "" : "s"} (${formatBytes(backupSummary.totalBytes)}) stored on this device. This can't be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            await clearAllBackups();
+            setBackupSummary(getBackupSummary());
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Settings</Text>
@@ -39,6 +62,22 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
           <Text style={styles.primaryButtonText}>{isPro ? "Manage Pro" : "See what's in Pro"}</Text>
         </Pressable>
       </View>
+
+      {isPro && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Local backups</Text>
+          <Text style={styles.body}>
+            {backupSummary.count > 0
+              ? `${backupSummary.count} item${backupSummary.count === 1 ? "" : "s"} backed up on this device · ${formatBytes(backupSummary.totalBytes)}`
+              : "Nothing backed up yet — deleted items get a local safety copy here first."}
+          </Text>
+          {backupSummary.count > 0 && (
+            <Pressable style={styles.secondaryButton} onPress={handleClearBackups}>
+              <Text style={styles.secondaryButtonText}>Clear local backups</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Pay it forward</Text>

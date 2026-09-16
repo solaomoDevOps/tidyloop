@@ -11,9 +11,9 @@ interface Props {
 }
 
 const FEATURES = [
-  { icon: "⚡", label: "Faster batch hashing", detail: "Scan huge libraries in a fraction of the time.", color: colors.sky },
-  { icon: "🕒", label: "Scheduled background scans", detail: "Tidyloop tidies automatically — you just review.", color: colors.green },
-  { icon: "☁️", label: "Backup-before-delete", detail: "Every removed item is backed up to iCloud/Drive first, for extra peace of mind.", color: colors.pink },
+  { icon: "⚡", label: "Faster batch hashing", detail: "Scans run at double the concurrency — noticeably faster on large libraries.", color: colors.sky },
+  { icon: "🕒", label: "Scheduled background scans", detail: "Coming soon — Tidyloop will tidy automatically, you just review.", color: colors.green },
+  { icon: "💾", label: "Backup-before-delete", detail: "Every removed item gets a local safety copy on this device first — never truly gone by accident.", color: colors.pink },
 ];
 
 export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimulateUnlock }: Props) {

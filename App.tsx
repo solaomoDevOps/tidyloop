@@ -12,6 +12,7 @@ import ProPaywallScreen from "./src/screens/ProPaywallScreen";
 import { initDb, logFreedSpace, getProStatus, setProStatus, getHasOnboarded, setHasOnboarded } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { deleteAssets } from "./src/services/scanning/photoScanner";
+import { backupAssets } from "./src/services/backup/localBackup";
 import { initIAPConnection, teardownIAPConnection, purchasePro, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
 import { ScannedAsset, UsefulnessScore, ReviewAction, ScanCategoryResult, ScanCategoryId } from "./src/types";
 
@@ -113,6 +114,13 @@ export default function App() {
                     return;
                   }
 
+                  if (isPro) {
+                    const assetsToBackUp = deleted
+                      .map((d) => queue.find((q) => q.asset.id === d.assetId)?.asset)
+                      .filter((a): a is ScannedAsset => !!a);
+                    await backupAssets(assetsToBackUp).catch((err) => console.warn("backupAssets failed:", err));
+                  }
+
                   let confirmed = false;
                   try {
                     confirmed = await deleteAssets(deleted.map((d) => d.assetId));
@@ -136,7 +144,8 @@ export default function App() {
                   logFreedSpace(freedBytes, deleted.length);
                   Alert.alert(
                     `${deleted.length} item${deleted.length === 1 ? "" : "s"} moved to Recently Deleted`,
-                    "iOS keeps them there for 30 days as a safety net, so they're not gone for good yet. To reclaim the space right now, open Photos → Albums → Recently Deleted, select them, and delete permanently."
+                    (isPro ? "A local backup copy was kept before removal — manage it from Settings. " : "") +
+                      "iOS keeps them there for 30 days as a safety net, so they're not gone for good yet. To reclaim the space right now, open Photos → Albums → Recently Deleted, select them, and delete permanently."
                   );
                   props.navigation.navigate("Results");
                 }}
