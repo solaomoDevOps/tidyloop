@@ -88,6 +88,8 @@ export default function App() {
           {(props) => (
             <CategoryResultsScreen
               results={categoryResults}
+              isPro={isPro}
+              onUpgrade={() => props.navigation.navigate("Pro")}
               onReviewCategory={(categoryId: ScanCategoryId) => {
                 const category = categoryResults.find((r) => r.categoryId === categoryId);
                 if (!category) return;
@@ -108,6 +110,7 @@ export default function App() {
                 queue={queue}
                 isPro={isPro}
                 onComplete={() => props.navigation.navigate("Results")}
+                onUpgradeNeeded={() => props.navigation.navigate("Pro")}
               />
             );
           }}

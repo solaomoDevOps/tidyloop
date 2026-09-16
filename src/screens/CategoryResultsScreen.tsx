@@ -4,15 +4,21 @@ import { ScanCategoryResult, ScanCategoryId } from "../types";
 import { SCAN_CATEGORIES } from "../services/scanning/categoryScanner";
 import { formatBytes } from "../components/format";
 import { categoryColors } from "../theme/colors";
+import { getTotalFreedBytes } from "../services/storage/db";
+import { FREE_TIER_CAP_BYTES } from "../services/plan/planLimits";
 
 interface Props {
   results: ScanCategoryResult[];
+  isPro: boolean;
   onReviewCategory: (categoryId: ScanCategoryId) => void;
+  onUpgrade: () => void;
 }
 
-export default function CategoryResultsScreen({ results, onReviewCategory }: Props) {
+export default function CategoryResultsScreen({ results, isPro, onReviewCategory, onUpgrade }: Props) {
   const totalBytes = results.reduce((s, r) => s + r.reclaimableBytes, 0);
   const totalItems = results.reduce((s, r) => s + r.assets.length, 0);
+  const freedSoFar = getTotalFreedBytes();
+  const usageFraction = Math.min(1, freedSoFar / FREE_TIER_CAP_BYTES);
 
   const headlineAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -30,6 +36,23 @@ export default function CategoryResultsScreen({ results, onReviewCategory }: Pro
         <Text style={styles.headline}>{formatBytes(totalBytes)}</Text>
         <Text style={styles.subheadline}>reclaimable across {totalItems} items</Text>
       </Animated.View>
+
+      {!isPro && (
+        <Pressable style={styles.capBanner} onPress={onUpgrade}>
+          <View style={styles.capBannerHeader}>
+            <Text style={styles.capBannerLabel}>Free plan</Text>
+            <Text style={styles.capBannerAmount}>
+              {formatBytes(freedSoFar)} of {formatBytes(FREE_TIER_CAP_BYTES)} freed
+            </Text>
+          </View>
+          <View style={styles.capBannerTrack}>
+            <View style={[styles.capBannerFill, { width: `${usageFraction * 100}%` }]} />
+          </View>
+          <Text style={styles.capBannerHint}>
+            {usageFraction >= 1 ? "Limit reached — upgrade to Pro to keep freeing space" : "Upgrade to Pro to remove the 5GB free limit"}
+          </Text>
+        </Pressable>
+      )}
 
       {results.map((result, i) => {
         const def = SCAN_CATEGORIES.find((c) => c.id === result.categoryId)!;
@@ -128,6 +151,13 @@ const styles = StyleSheet.create({
   content: { padding: 20, gap: 14, paddingBottom: 40 },
   headline: { fontSize: 34, fontWeight: "800", color: "#1b2a4a", textAlign: "center", marginTop: 8 },
   subheadline: { fontSize: 14, color: "#6b7488", textAlign: "center", marginBottom: 12 },
+  capBanner: { backgroundColor: "white", borderRadius: 16, padding: 14, gap: 8, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  capBannerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  capBannerLabel: { fontSize: 13, fontWeight: "700", color: "#1b2a4a" },
+  capBannerAmount: { fontSize: 12, color: "#6b7488" },
+  capBannerTrack: { height: 6, borderRadius: 3, backgroundColor: "#eef1f8", overflow: "hidden" },
+  capBannerFill: { height: "100%", borderRadius: 3, backgroundColor: "#2a6df4" },
+  capBannerHint: { fontSize: 12, color: "#2a6df4", fontWeight: "600" },
   card: { backgroundColor: "white", borderRadius: 18, padding: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   cardEmpty: { opacity: 0.6 },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 12 },

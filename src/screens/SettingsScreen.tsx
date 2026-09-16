@@ -1,20 +1,21 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from "react-native";
-import { getBackupSummary } from "../services/storage/db";
+import { getBackupSummary, getTotalFreedBytes } from "../services/storage/db";
 import { clearAllBackups } from "../services/backup/localBackup";
 import { formatBytes } from "../components/format";
+import { FREE_TIER_CAP_BYTES } from "../services/plan/planLimits";
 
 /**
- * The generosity model, made concrete (see README "Monetization &
- * generosity model" for the full reasoning):
+ * The monetization model:
  *
- *  - Free tier is genuinely complete: unlimited scans, unlimited review
- *    sessions, full duplicate detection. No artificial caps designed to
- *    frustrate you into paying — that's the exact pattern the market
- *    research flagged as the #1 complaint in this category.
- *  - Pro is a single one-time unlock (not a subscription): faster batch
- *    hashing, scheduled background scans (coming soon), and a local
- *    backup-before-delete safety copy.
+ *  - Scanning and review are unlimited on every plan — you always see
+ *    everything and decide on everything, no matter what you pay.
+ *  - Free can actually FREE up to FREE_TIER_CAP_BYTES cumulatively
+ *    (lifetime, via freed_space_log) before Pro is required to keep
+ *    deleting. See src/services/plan/planLimits.ts.
+ *  - Pro is a single one-time unlock (not a subscription): removes the
+ *    free cap entirely, plus faster batch hashing, scheduled background
+ *    scans (coming soon), and a local backup-before-delete safety copy.
  *  - "Pay it forward": every Pro purchase funds one free Pro unlock for
  *    someone on the waitlist who taps "I can't afford this." No ads sold
  *    against that list, no data collected beyond a device token to grant
@@ -30,6 +31,7 @@ interface Props {
 
 export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro, onRequestFreeUnlock }: Props) {
   const [backupSummary, setBackupSummary] = useState(() => getBackupSummary());
+  const freedSoFar = getTotalFreedBytes();
 
   function handleClearBackups() {
     Alert.alert(
@@ -56,7 +58,9 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Plan</Text>
         <Text style={styles.body}>
-          {isPro ? "You're on Tidyloop Pro. Thank you." : "Free plan — full scanning and review, no caps."}
+          {isPro
+            ? "You're on Tidyloop Pro. Thank you."
+            : `Free plan — unlimited scanning and review. Free up to ${formatBytes(FREE_TIER_CAP_BYTES)} total (${formatBytes(freedSoFar)} used).`}
         </Text>
         <Pressable style={styles.primaryButton} onPress={onViewPro}>
           <Text style={styles.primaryButtonText}>{isPro ? "Manage Pro" : "See what's in Pro"}</Text>

@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, Animated, Easing } from "react-native";
 import { colors } from "../theme/colors";
 import { getProOffering, isIAPConfigured } from "../services/payments/iap";
+import { FREE_TIER_CAP_BYTES } from "../services/plan/planLimits";
+import { formatBytes } from "../components/format";
 
 interface Props {
   isPro: boolean;
@@ -12,21 +14,24 @@ interface Props {
 }
 
 const FEATURES = [
+  { icon: "📦", label: `No ${formatBytes(FREE_TIER_CAP_BYTES)} free limit`, detail: `Free plans can free up to ${formatBytes(FREE_TIER_CAP_BYTES)} total, lifetime — Pro removes the cap completely.`, color: colors.blue, comingSoon: false },
   { icon: "⚡", label: "Faster batch hashing", detail: "Scans run at double the concurrency — noticeably faster on large libraries.", color: colors.sky, comingSoon: false },
   { icon: "🕒", label: "Scheduled background scans", detail: "Coming soon — Tidyloop will tidy automatically, you just review.", color: colors.green, comingSoon: true },
   { icon: "💾", label: "Backup-before-delete", detail: "Every removed item gets a local safety copy on this device first — never truly gone by accident.", color: colors.pink, comingSoon: false },
 ];
 
-const COMPARISON: { label: string; free: boolean; pro: boolean | "soon" }[] = [
+const COMPARISON: { label: string; free: boolean | string; pro: boolean | string }[] = [
   { label: "Unlimited scans & review", free: true, pro: true },
   { label: "Duplicate & clutter detection", free: true, pro: true },
+  { label: "Storage you can free", free: formatBytes(FREE_TIER_CAP_BYTES), pro: "Unlimited" },
   { label: "2x faster batch hashing", free: false, pro: true },
   { label: "Local backup before delete", free: false, pro: true },
   { label: "Scheduled background scans", free: false, pro: "soon" },
 ];
 
-function ComparisonCell({ value }: { value: boolean | "soon" }) {
+function ComparisonCell({ value }: { value: boolean | string }) {
   if (value === "soon") return <Text style={[styles.cellMark, styles.cellSoon]}>Soon</Text>;
+  if (typeof value === "string") return <Text style={[styles.cellMark, styles.cellText]}>{value}</Text>;
   return <Text style={[styles.cellMark, value ? styles.cellYes : styles.cellNo]}>{value ? "✓" : "—"}</Text>;
 }
 
@@ -154,11 +159,12 @@ const styles = StyleSheet.create({
   tableHeaderCell: { fontSize: 12, fontWeight: "700", color: "#8a92a8", textAlign: "center" },
   tableRow: { flexDirection: "row", alignItems: "center" },
   tableLabel: { flex: 1, fontSize: 13, color: "#1b2a4a" },
-  colCell: { width: 56, alignItems: "center" },
+  colCell: { width: 64, alignItems: "center" },
   cellMark: { fontSize: 14, fontWeight: "700" },
   cellYes: { color: colors.green },
   cellNo: { color: "#c3c9d6" },
   cellSoon: { color: "#a5730f", fontSize: 11 },
+  cellText: { color: "#1b2a4a", fontSize: 11, textAlign: "center" },
   featureList: { width: "100%", gap: 16, marginVertical: 12 },
   featureRow: { flexDirection: "row", gap: 12, alignItems: "center" },
   featureIconBadge: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
