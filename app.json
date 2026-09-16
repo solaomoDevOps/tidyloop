@@ -34,7 +34,14 @@
           "imageWidth": 76
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Tidyloop needs access to your photo library to scan for duplicates and clutter.",
+          "savePhotosPermission": "Tidyloop needs permission to update your photo library when you clean up items."
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true
