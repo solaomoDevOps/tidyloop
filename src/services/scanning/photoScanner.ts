@@ -135,6 +135,7 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
   const scanned: ScannedAsset = {
     id: asset.id,
     uri: asset.uri,
+    localUri,
     kind: isLivePhoto ? "livePhoto" : isVideo ? "video" : "photo",
     sizeBytes,
     createdAt: asset.creationTime ?? Date.now(),

@@ -23,7 +23,8 @@ export interface ScanCategoryResult {
 
 export interface ScannedAsset {
   id: string;              // native asset/file id
-  uri: string;              // local URI (ph:// on iOS, file:// on Android)
+  uri: string;              // local URI (ph:// on iOS, file:// on Android) — not directly loadable by <Image> on iOS
+  localUri?: string;        // file:// path resolved via getAssetInfoAsync, safe to pass to <Image>
   kind: AssetKind;
   sizeBytes: number;
   createdAt: number;        // epoch ms

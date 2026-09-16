@@ -102,7 +102,7 @@ export default function ReviewQueueScreen({ queue, onFinished }: Props) {
         {...panResponder.panHandlers}
         style={[styles.card, { transform: [...position.getTranslateTransform(), { rotate }] }]}
       >
-        <Image source={{ uri: current.asset.uri }} style={styles.thumbnail} resizeMode="cover" />
+        <Image source={{ uri: current.asset.localUri ?? current.asset.uri }} style={styles.thumbnail} resizeMode="cover" />
 
         <Animated.View pointerEvents="none" style={[styles.overlay, styles.keepOverlay, { opacity: keepOverlayOpacity }]}>
           <Text style={styles.overlayText}>KEEP</Text>
