@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Text, Image, Pressable, StyleSheet, ScrollView, Animated, Easing } from "react-native";
 
 interface Props {
   isPro: boolean;
@@ -16,9 +16,27 @@ const FEATURES = [
 ];
 
 export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimulateUnlock }: Props) {
+  const heroAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(heroAnim, {
+      toValue: 1,
+      duration: 550,
+      easing: Easing.out(Easing.back(1.2)),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const heroOpacity = heroAnim;
+  const heroScale = heroAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Image source={require("../../assets/illustrations/hero-freeing-space.png")} style={styles.hero} resizeMode="contain" />
+      <Animated.Image
+        source={require("../../assets/illustrations/hero-more-space.png")}
+        style={[styles.hero, { opacity: heroOpacity, transform: [{ scale: heroScale }] }]}
+        resizeMode="contain"
+      />
 
       <Text style={styles.title}>Tidyloop Pro</Text>
       <Text style={styles.subtitle}>One-time unlock. No subscription, ever.</Text>

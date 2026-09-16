@@ -13,6 +13,8 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
   const totalFreed = getTotalFreedBytes();
 
   const titleAnim = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const heroFloat = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const breathe = useRef(new Animated.Value(1)).current;
   const pressScale = useRef(new Animated.Value(1)).current;
@@ -25,6 +27,8 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
       useNativeDriver: true,
     }).start();
 
+    Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }).start();
+
     const breatheLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(breathe, { toValue: 1.04, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -32,11 +36,24 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
       ])
     );
     breatheLoop.start();
-    return () => breatheLoop.stop();
+
+    const floatLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(heroFloat, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(heroFloat, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    floatLoop.start();
+
+    return () => {
+      breatheLoop.stop();
+      floatLoop.stop();
+    };
   }, []);
 
   const titleOpacity = titleAnim;
   const titleTranslate = titleAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
+  const heroTranslateY = heroFloat.interpolate({ inputRange: [0, 1], outputRange: [0, -8] });
 
   function handlePressIn() {
     Animated.spring(pressScale, { toValue: 0.94, useNativeDriver: true }).start();
@@ -52,10 +69,19 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
       </Pressable>
 
       <Animated.View style={{ opacity: titleOpacity, transform: [{ translateY: titleTranslate }], alignItems: "center" }}>
-        <Image source={require("../../assets/illustrations/hero-holding-phone.png")} style={styles.hero} resizeMode="contain" />
-        <Text style={styles.title}>Tidyloop</Text>
+        <Animated.Image
+          source={require("../../assets/images/logo-tidyloop.png")}
+          style={[styles.logo, { transform: [{ scale: logoScale }] }]}
+          resizeMode="contain"
+        />
         <Text style={styles.subtitle}>Free up space. Never lose what matters.</Text>
       </Animated.View>
+
+      <Animated.Image
+        source={require("../../assets/illustrations/hero-more-space.png")}
+        style={[styles.hero, { transform: [{ translateY: heroTranslateY }] }]}
+        resizeMode="contain"
+      />
 
       {totalFreed > 0 && (
         <Animated.Text style={[styles.freedStat, { opacity: titleOpacity }]}>
@@ -83,9 +109,9 @@ export default function HomeScreen({ onStartScan, onOpenSettings }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: "center", alignItems: "center", gap: 16 },
-  hero: { width: 160, height: 160, marginBottom: 4 },
-  title: { fontSize: 34, fontWeight: "800", color: "#1b2a4a" },
+  container: { flex: 1, padding: 24, justifyContent: "center", alignItems: "center", gap: 12 },
+  logo: { width: 190, height: 125 },
+  hero: { width: 160, height: 160 },
   subtitle: { fontSize: 16, color: "#5a6482", marginBottom: 12, textAlign: "center" },
   freedStat: { fontSize: 14, color: "#2a8f4f", textAlign: "center", marginBottom: 8 },
   scanButton: { backgroundColor: "#3f7ce0", paddingVertical: 18, paddingHorizontal: 36, borderRadius: 16, shadowColor: "#3f7ce0", shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
