@@ -9,6 +9,7 @@ import ReviewQueueScreen from "./src/screens/ReviewQueueScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import { initDb, logFreedSpace, getProStatus } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
+import { deleteAssets } from "./src/services/scanning/photoScanner";
 import { initIAPConnection, teardownIAPConnection, purchasePro, restorePurchases } from "./src/services/payments/iap";
 import { ScannedAsset, UsefulnessScore, ReviewAction, ScanCategoryResult, ScanCategoryId } from "./src/types";
 
@@ -91,13 +92,38 @@ export default function App() {
             return (
               <ReviewQueueScreen
                 queue={queue}
-                onFinished={(decisions: ReviewAction[]) => {
+                onFinished={async (decisions: ReviewAction[]) => {
                   const deleted = decisions.filter((d) => d.decision === "delete");
+                  if (deleted.length === 0) {
+                    props.navigation.navigate("Results");
+                    return;
+                  }
+
+                  let confirmed = false;
+                  try {
+                    confirmed = await deleteAssets(deleted.map((d) => d.assetId));
+                  } catch (err) {
+                    console.warn("deleteAssets failed:", err);
+                    Alert.alert("Couldn't delete", "Something went wrong removing these items. Nothing was deleted.");
+                    props.navigation.navigate("Results");
+                    return;
+                  }
+
+                  if (!confirmed) {
+                    // User cancelled the OS's own delete confirmation — nothing removed.
+                    props.navigation.navigate("Results");
+                    return;
+                  }
+
                   const freedBytes = deleted.reduce((sum, d) => {
                     const item = queue.find((q) => q.asset.id === d.assetId);
                     return sum + (item?.asset.sizeBytes ?? 0);
                   }, 0);
-                  if (deleted.length > 0) logFreedSpace(freedBytes, deleted.length);
+                  logFreedSpace(freedBytes, deleted.length);
+                  Alert.alert(
+                    `${deleted.length} item${deleted.length === 1 ? "" : "s"} moved to Recently Deleted`,
+                    "iOS keeps them there for 30 days as a safety net, so they're not gone for good yet. To reclaim the space right now, open Photos → Albums → Recently Deleted, select them, and delete permanently."
+                  );
                   props.navigation.navigate("Results");
                 }}
               />

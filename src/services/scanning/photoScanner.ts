@@ -34,6 +34,16 @@ export async function requestPhotoPermission(): Promise<boolean> {
   return status === "granted";
 }
 
+// On iOS, MediaLibrary.deleteAssetsAsync always shows the OS's own
+// confirmation sheet and always moves assets to "Recently Deleted"
+// (30-day retention) rather than purging instantly — there's no public
+// API to bypass that, so the returned boolean reflects whether the user
+// confirmed the system dialog, not whether the files are gone for good.
+export async function deleteAssets(ids: string[]): Promise<boolean> {
+  if (ids.length === 0) return true;
+  return MediaLibrary.deleteAssetsAsync(ids);
+}
+
 export async function scanPhotoLibrary(
   onProgress?: (scanned: number, total: number) => void
 ): Promise<ScannedAsset[]> {
