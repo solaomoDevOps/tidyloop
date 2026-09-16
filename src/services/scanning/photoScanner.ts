@@ -20,9 +20,11 @@ import { computeDHash } from "./duplicateDetector";
 import { computeExactHash } from "./exactHash";
 import { getVideoThumbnailUri } from "./videoThumbnail";
 import { getPhotoThumbnailUri } from "./photoThumbnail";
-import { getCachedAssetsMap, upsertAssets, CachedAssetMeta } from "../storage/db";
+import { getCachedAssetsMap, upsertAssets, CachedAssetMeta, getProStatus } from "../storage/db";
 
-const CONCURRENCY = 3; // lowered from 6 — hashing is memory-bound, not just I/O-bound
+const FREE_CONCURRENCY = 3; // lowered from 6 during the crash fix — hashing is memory-bound, not just I/O-bound
+const PRO_CONCURRENCY = 6; // safe to restore for Pro: the actual crash cause (full-res images hitting Skia)
+// is fixed by the thumbnail-first resize below, not by concurrency — this now runs on tiny thumbnails.
 
 const COMMON_SCREENSHOT_RESOLUTIONS: Array<[number, number]> = [
   [1170, 2532], [1179, 2556], [1284, 2778], [1290, 2796],
@@ -87,7 +89,8 @@ export async function scanPhotoLibrary(
 
     console.log(`scanPhotoLibrary: page ${pageNumber}, ${newAssetsInPage.length} new assets, hasNextPage=${page.hasNextPage}`);
 
-    const pageResults = await mapWithConcurrency(newAssetsInPage, CONCURRENCY, async (asset) => {
+    const concurrency = getProStatus() ? PRO_CONCURRENCY : FREE_CONCURRENCY;
+    const pageResults = await mapWithConcurrency(newAssetsInPage, concurrency, async (asset) => {
       if (!asset) return null;
       seenIds.add(asset.id);
       // A single asset failing (corrupt file, decode error, anything) must
