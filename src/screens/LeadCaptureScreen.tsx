@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../theme/colors";
-import { setUserName, setHasSubmittedLead, setPendingLead } from "../services/storage/db";
+import { setUserName, setUserPhone, setHasSubmittedLead, setPendingLead } from "../services/storage/db";
 import { submitLead } from "../services/leads/leadCapture";
 
 interface Props {
@@ -45,13 +45,15 @@ export default function LeadCaptureScreen({ onDone }: Props) {
     setSubmitting(true);
 
     const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
     setUserName(trimmedName);
+    setUserPhone(trimmedPhone);
 
     try {
-      await submitLead({ name: trimmedName, phone: phone.trim(), consentedMarketing: consented });
+      await submitLead({ name: trimmedName, phone: trimmedPhone, consentedMarketing: consented });
     } catch (err) {
       console.warn("submitLead failed, will retry next launch:", err);
-      setPendingLead({ name: trimmedName, phone: phone.trim(), consentedMarketing: consented });
+      setPendingLead({ name: trimmedName, phone: trimmedPhone, consentedMarketing: consented });
     }
 
     setHasSubmittedLead(true);

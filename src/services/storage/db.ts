@@ -190,6 +190,24 @@ export function setUserName(name: string): void {
   );
 }
 
+const APP_STATE_KEY_USER_PHONE = "userPhone";
+
+/** Cached locally so pay-it-forward requests and grant checks don't need
+ * to re-ask for the phone number — it's the identifier used to enforce
+ * the 6-month cooldown between free unlocks. */
+export function getUserPhone(): string | null {
+  const row = db.getFirstSync<{ value: string }>(`SELECT value FROM app_state WHERE key = ?;`, [APP_STATE_KEY_USER_PHONE]);
+  return row?.value ?? null;
+}
+
+export function setUserPhone(phone: string): void {
+  db.runSync(
+    `INSERT INTO app_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+    [APP_STATE_KEY_USER_PHONE, phone]
+  );
+}
+
 const APP_STATE_KEY_PENDING_LEAD = "pendingLead";
 
 export interface PendingLead {

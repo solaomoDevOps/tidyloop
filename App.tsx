@@ -18,11 +18,13 @@ import {
   setHasOnboarded,
   getHasSubmittedLead,
   setHasSubmittedLead,
+  getUserPhone,
 } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { getQuickPreviewAssets } from "./src/services/scanning/photoScanner";
 import { initIAPConnection, teardownIAPConnection, purchasePackage, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
 import { retryPendingLead } from "./src/services/leads/leadCapture";
+import { triggerRandomGrant, checkAndConsumeGrant, requestFreeUnlock } from "./src/services/payItForward/payItForward";
 import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId, DuplicateGroup, ReviewAction } from "./src/types";
 import type { PurchasesPackage } from "react-native-purchases";
 
@@ -36,8 +38,25 @@ export default function App() {
 
   useEffect(() => {
     initDb();
-    setIsPro(getProStatus());
+    const alreadyPro = getProStatus();
+    setIsPro(alreadyPro);
     retryPendingLead().catch((err) => console.warn("retryPendingLead failed:", err));
+
+    if (!alreadyPro) {
+      const phone = getUserPhone();
+      if (phone) {
+        checkAndConsumeGrant(phone).then((won) => {
+          if (won) {
+            setProStatus(true);
+            setIsPro(true);
+            Alert.alert(
+              "You've been given free Pro! 🎉",
+              "Someone's Pro purchase just funded a free unlock for you — enjoy."
+            );
+          }
+        });
+      }
+    }
 
     initIAPConnection(() => setIsPro(true)).catch((err) => {
       // Expected to fail in Expo Go / simulators without a signed-in
@@ -52,9 +71,28 @@ export default function App() {
   async function handleUpgrade(pkg: PurchasesPackage) {
     try {
       await purchasePackage(pkg);
+      triggerRandomGrant().catch((err) => console.warn("triggerRandomGrant failed:", err));
     } catch (err) {
       console.warn("purchasePackage failed:", err);
       Alert.alert("Purchase couldn't start", "Please try again in a moment.");
+    }
+  }
+
+  async function handleRequestFreeUnlock() {
+    const phone = getUserPhone();
+    if (!phone) {
+      Alert.alert("Couldn't find your number", "Please try again from Settings once you've set up your profile.");
+      return;
+    }
+    try {
+      await requestFreeUnlock(phone);
+      Alert.alert(
+        "Request received",
+        "You've been added to the pay-it-forward waitlist. Every Pro purchase funds a random drawing — we'll unlock Pro automatically if you're picked, no need to check back."
+      );
+    } catch (err) {
+      console.warn("requestFreeUnlock failed:", err);
+      Alert.alert("Couldn't submit request", "Please try again in a moment.");
     }
   }
 
@@ -190,14 +228,7 @@ export default function App() {
               peopleHelpedThisMonth={0}
               isPro={isPro}
               onViewPro={() => props.navigation.navigate("Pro")}
-              onRequestFreeUnlock={() => {
-                Alert.alert(
-                  "Request received",
-                  "You've been added to the pay-it-forward waitlist. We'll notify you when a free unlock is available."
-                );
-                /* TODO: replace with a real backend queue once one exists;
-                   for now this is a local acknowledgment only. */
-              }}
+              onRequestFreeUnlock={handleRequestFreeUnlock}
             />
           )}
         </Stack.Screen>

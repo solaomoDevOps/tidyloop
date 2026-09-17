@@ -29,7 +29,9 @@
  *      read, change, or delete anyone's data, including its own.)
  *   3. In Project Settings > API, copy the "Project URL" and the
  *      "anon public" key (NOT the service_role key — that one must never
- *      ship inside an app) into the two constants below.
+ *      ship inside an app) into the two constants in
+ *      src/services/supabase/config.ts (shared with payItForward.ts —
+ *      one Supabase project covers both features).
  *
  * Without real values, submitLead() logs a warning and no-ops instead of
  * throwing — the required onboarding step still completes locally so
@@ -37,12 +39,9 @@
  */
 
 import { getPendingLead, setPendingLead } from "../storage/db";
+import { SUPABASE_URL, isSupabaseConfigured, supabaseHeaders } from "../supabase/config";
 
-const SUPABASE_URL = "https://REPLACE_WITH_YOUR_PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "REPLACE_WITH_YOUR_ANON_KEY";
-
-export const isLeadCaptureConfigured =
-  !SUPABASE_URL.includes("REPLACE_WITH") && !SUPABASE_ANON_KEY.includes("REPLACE_WITH");
+export const isLeadCaptureConfigured = isSupabaseConfigured;
 
 export interface LeadInput {
   name: string;
@@ -52,18 +51,13 @@ export interface LeadInput {
 
 export async function submitLead(lead: LeadInput): Promise<void> {
   if (!isLeadCaptureConfigured) {
-    console.warn("Lead capture backend not configured yet — see src/services/leads/leadCapture.ts. Continuing without submitting.");
+    console.warn("Lead capture backend not configured yet — see src/services/supabase/config.ts. Continuing without submitting.");
     return;
   }
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Prefer: "return=minimal",
-    },
+    headers: { ...supabaseHeaders(), Prefer: "return=minimal" },
     body: JSON.stringify({
       name: lead.name,
       phone: lead.phone,
