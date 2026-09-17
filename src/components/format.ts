@@ -9,3 +9,7 @@ export function formatBytes(bytes: number): string {
   }
   return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
+
+export function formatDate(epochMs: number): string {
+  return new Date(epochMs).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}

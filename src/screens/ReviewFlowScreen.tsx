@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, Modal, Alert } from "react-native";
 import ReviewQueueScreen from "./ReviewQueueScreen";
-import { ScannedAsset, UsefulnessScore, ReviewAction } from "../types";
+import DuplicateCompareScreen from "./DuplicateCompareScreen";
+import { ScannedAsset, UsefulnessScore, ReviewAction, DuplicateGroup } from "../types";
 import { deleteAssets } from "../services/scanning/photoScanner";
 import { backupAssets } from "../services/backup/localBackup";
 import { compressAssets } from "../services/compression/compress";
@@ -10,7 +11,10 @@ import { getRemainingFreeBytes } from "../services/plan/planLimits";
 import { formatBytes } from "../components/format";
 
 interface Props {
-  queue: { asset: ScannedAsset; score: UsefulnessScore }[];
+  /** Either queue (generic swipe review) or duplicateGroups (side-by-side
+   * compare) is provided, never both. */
+  queue?: { asset: ScannedAsset; score: UsefulnessScore }[];
+  duplicateGroups?: DuplicateGroup[];
   isPro: boolean;
   onComplete: () => void;
   onUpgradeNeeded: () => void;
@@ -19,14 +23,20 @@ interface Props {
 type Stage = null | "backing-up" | "deleting" | "compressing";
 
 /**
- * Wraps ReviewQueueScreen with the actual delete/compress (and, for Pro,
- * backup) side effects, plus a visible blocking overlay while they run —
- * without this, these ran as a silent await with no on-screen sign
- * anything was happening between tapping Done and the next screen.
+ * Wraps ReviewQueueScreen (or, for duplicates, DuplicateCompareScreen)
+ * with the actual delete/compress (and, for Pro, backup) side effects,
+ * plus a visible blocking overlay while they run — without this, these
+ * ran as a silent await with no on-screen sign anything was happening
+ * between tapping Done and the next screen.
  */
-export default function ReviewFlowScreen({ queue, isPro, onComplete, onUpgradeNeeded }: Props) {
+export default function ReviewFlowScreen({ queue, duplicateGroups, isPro, onComplete, onUpgradeNeeded }: Props) {
   const [stage, setStage] = useState<Stage>(null);
   const [compressProgress, setCompressProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const assetById = useMemo(() => {
+    const all = duplicateGroups ? duplicateGroups.flatMap((g) => g.assets) : (queue ?? []).map((q) => q.asset);
+    return new Map(all.map((a) => [a.id, a]));
+  }, [queue, duplicateGroups]);
 
   async function handleFinished(decisions: ReviewAction[]) {
     const deleted = decisions.filter((d) => d.decision === "delete");
@@ -41,7 +51,7 @@ export default function ReviewFlowScreen({ queue, isPro, onComplete, onUpgradeNe
     // space (freed_space_log), not per-session, so usage spread across
     // many small sessions is treated the same as one big one. ---
     const requestedAssets = deleted
-      .map((d) => queue.find((q) => q.asset.id === d.assetId)?.asset)
+      .map((d) => assetById.get(d.assetId))
       .filter((a): a is ScannedAsset => !!a);
 
     let assetsToDelete = requestedAssets;
@@ -96,7 +106,7 @@ export default function ReviewFlowScreen({ queue, isPro, onComplete, onUpgradeNe
     // known until after compressing, so there's nothing sensible to trim
     // against in advance) — available on every plan. ---
     const assetsToCompress = compressed
-      .map((d) => queue.find((q) => q.asset.id === d.assetId)?.asset)
+      .map((d) => assetById.get(d.assetId))
       .filter((a): a is ScannedAsset => !!a);
 
     let compressedCount = 0;
@@ -177,7 +187,11 @@ export default function ReviewFlowScreen({ queue, isPro, onComplete, onUpgradeNe
 
   return (
     <>
-      <ReviewQueueScreen queue={queue} onFinished={handleFinished} />
+      {duplicateGroups && duplicateGroups.length > 0 ? (
+        <DuplicateCompareScreen groups={duplicateGroups} onFinished={handleFinished} />
+      ) : (
+        <ReviewQueueScreen queue={queue ?? []} onFinished={handleFinished} />
+      )}
       <Modal visible={stage !== null} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.card}>

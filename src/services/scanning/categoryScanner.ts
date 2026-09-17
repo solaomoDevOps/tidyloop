@@ -55,12 +55,14 @@ export async function runCategorizedScan(callbacks: CategoryScanCallbacks = {}):
   callbacks.onCategoryStart?.("duplicates");
   const exact = groupExactDuplicates(photoAssets);
   const near = groupNearDuplicates(photoAssets);
-  const duplicateAssets = [...exact, ...near].flatMap((g) =>
+  const duplicateGroups = [...exact, ...near];
+  const duplicateAssets = duplicateGroups.flatMap((g) =>
     g.assets.filter((a) => a.id !== g.recommendedKeepId)
   );
   const duplicatesResult: ScanCategoryResult = {
     categoryId: "duplicates",
     assets: duplicateAssets,
+    duplicateGroups,
     reclaimableBytes: duplicateAssets.reduce((s, a) => s + a.sizeBytes, 0),
   };
   results.push(duplicatesResult);

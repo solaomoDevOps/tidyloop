@@ -19,6 +19,11 @@ export interface ScanCategoryResult {
   categoryId: ScanCategoryId;
   assets: ScannedAsset[];
   reclaimableBytes: number;
+  /** Only populated for "duplicates" — the grouped structure (all copies
+   * together, with a recommended keeper) that `assets` above flattens
+   * away. Lets the UI offer a side-by-side compare instead of reviewing
+   * each non-recommended copy one at a time with nothing to compare it to. */
+  duplicateGroups?: DuplicateGroup[];
 }
 
 export interface ScannedAsset {

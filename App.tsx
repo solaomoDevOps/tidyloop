@@ -13,7 +13,7 @@ import { initDb, getProStatus, setProStatus, getHasOnboarded, setHasOnboarded } 
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { getQuickPreviewAssets } from "./src/services/scanning/photoScanner";
 import { initIAPConnection, teardownIAPConnection, purchasePackage, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
-import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId } from "./src/types";
+import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId, DuplicateGroup } from "./src/types";
 import type { PurchasesPackage } from "react-native-purchases";
 
 const Stack = createNativeStackNavigator();
@@ -115,6 +115,10 @@ export default function App() {
               onReviewCategory={(categoryId: ScanCategoryId) => {
                 const category = categoryResults.find((r) => r.categoryId === categoryId);
                 if (!category) return;
+                if (categoryId === "duplicates" && category.duplicateGroups && category.duplicateGroups.length > 0) {
+                  props.navigation.navigate("Review", { duplicateGroups: category.duplicateGroups, returnTo: "Results" });
+                  return;
+                }
                 const queue = category.assets
                   .map((asset) => ({ asset, score: scoreAsset(asset) }))
                   .sort((a, b) => a.score.score - b.score.score);
@@ -126,13 +130,15 @@ export default function App() {
 
         <Stack.Screen name="Review" options={{ title: "Review" }}>
           {(props) => {
-            const { queue, returnTo } = props.route.params as {
-              queue: { asset: ScannedAsset; score: UsefulnessScore }[];
+            const { queue, duplicateGroups, returnTo } = props.route.params as {
+              queue?: { asset: ScannedAsset; score: UsefulnessScore }[];
+              duplicateGroups?: DuplicateGroup[];
               returnTo: "Home" | "Results";
             };
             return (
               <ReviewFlowScreen
                 queue={queue}
+                duplicateGroups={duplicateGroups}
                 isPro={isPro}
                 onComplete={() => props.navigation.navigate(returnTo)}
                 onUpgradeNeeded={() => props.navigation.navigate("Pro")}
