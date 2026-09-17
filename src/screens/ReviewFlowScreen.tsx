@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, Modal, Alert } from "react-native";
 import ReviewQueueScreen from "./ReviewQueueScreen";
 import DuplicateCompareScreen from "./DuplicateCompareScreen";
@@ -11,10 +11,13 @@ import { getRemainingFreeBytes } from "../services/plan/planLimits";
 import { formatBytes } from "../components/format";
 
 interface Props {
-  /** Either queue (generic swipe review) or duplicateGroups (side-by-side
-   * compare) is provided, never both. */
+  /** Exactly one of queue (generic swipe review), duplicateGroups
+   * (side-by-side compare), or prebuiltDecisions (Smart Clean — already
+   * decided, no review UI shown at all) is provided. duplicateGroups can
+   * accompany prebuiltDecisions purely to supply the asset lookup. */
   queue?: { asset: ScannedAsset; score: UsefulnessScore }[];
   duplicateGroups?: DuplicateGroup[];
+  prebuiltDecisions?: ReviewAction[];
   isPro: boolean;
   onComplete: () => void;
   onUpgradeNeeded: () => void;
@@ -23,13 +26,14 @@ interface Props {
 type Stage = null | "backing-up" | "deleting" | "compressing";
 
 /**
- * Wraps ReviewQueueScreen (or, for duplicates, DuplicateCompareScreen)
- * with the actual delete/compress (and, for Pro, backup) side effects,
- * plus a visible blocking overlay while they run — without this, these
- * ran as a silent await with no on-screen sign anything was happening
- * between tapping Done and the next screen.
+ * Wraps ReviewQueueScreen (or, for duplicates, DuplicateCompareScreen; or,
+ * for Smart Clean, no UI at all — see prebuiltDecisions) with the actual
+ * delete/compress (and, for Pro, backup) side effects, plus a visible
+ * blocking overlay while they run — without this, these ran as a silent
+ * await with no on-screen sign anything was happening between tapping
+ * Done and the next screen.
  */
-export default function ReviewFlowScreen({ queue, duplicateGroups, isPro, onComplete, onUpgradeNeeded }: Props) {
+export default function ReviewFlowScreen({ queue, duplicateGroups, prebuiltDecisions, isPro, onComplete, onUpgradeNeeded }: Props) {
   const [stage, setStage] = useState<Stage>(null);
   const [compressProgress, setCompressProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -37,6 +41,13 @@ export default function ReviewFlowScreen({ queue, duplicateGroups, isPro, onComp
     const all = duplicateGroups ? duplicateGroups.flatMap((g) => g.assets) : (queue ?? []).map((q) => q.asset);
     return new Map(all.map((a) => [a.id, a]));
   }, [queue, duplicateGroups]);
+
+  useEffect(() => {
+    if (prebuiltDecisions) {
+      handleFinished(prebuiltDecisions);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleFinished(decisions: ReviewAction[]) {
     const deleted = decisions.filter((d) => d.decision === "delete");
@@ -187,7 +198,9 @@ export default function ReviewFlowScreen({ queue, duplicateGroups, isPro, onComp
 
   return (
     <>
-      {duplicateGroups && duplicateGroups.length > 0 ? (
+      {prebuiltDecisions ? (
+        <View style={styles.smartCleanBackground} />
+      ) : duplicateGroups && duplicateGroups.length > 0 ? (
         <DuplicateCompareScreen groups={duplicateGroups} onFinished={handleFinished} />
       ) : (
         <ReviewQueueScreen queue={queue ?? []} onFinished={handleFinished} />
@@ -205,6 +218,7 @@ export default function ReviewFlowScreen({ queue, duplicateGroups, isPro, onComp
 }
 
 const styles = StyleSheet.create({
+  smartCleanBackground: { flex: 1, backgroundColor: "#f7f8fc" },
   overlay: { flex: 1, backgroundColor: "rgba(27,42,74,0.55)", alignItems: "center", justifyContent: "center" },
   card: { backgroundColor: "white", borderRadius: 18, paddingVertical: 28, paddingHorizontal: 36, alignItems: "center", gap: 14, minWidth: 220 },
   text: { fontSize: 14, color: "#1b2a4a", fontWeight: "600", textAlign: "center" },

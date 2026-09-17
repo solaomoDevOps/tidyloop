@@ -147,10 +147,20 @@ async function buildAssetMetadata(asset: MediaLibrary.Asset): Promise<ScannedAss
   const isLivePhoto = subtypes.includes("livePhoto");
   const isVideo = asset.mediaType === "video";
 
+  // <Image> can decode photos/live-photo stills directly from localUri,
+  // but never a raw video file — resolve a real still frame for those so
+  // review/compare screens always have something displayable instead of
+  // a broken image.
+  let previewUri: string | undefined = isVideo ? undefined : localUri;
+  if (isVideo && localUri) {
+    previewUri = await getVideoThumbnailUri(localUri);
+  }
+
   return {
     id: asset.id,
     uri: asset.uri,
     localUri,
+    previewUri,
     kind: isLivePhoto ? "livePhoto" : isVideo ? "video" : "photo",
     sizeBytes,
     createdAt: asset.creationTime ?? Date.now(),
@@ -216,7 +226,9 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
   // Skia the original full-resolution file. This is the core crash fix.
   try {
     if (isVideo) {
-      const frameUri = await getVideoThumbnailUri(localUri);
+      // Reuse the still frame buildAssetMetadata already resolved for
+      // previewUri instead of extracting a second one from the video.
+      const frameUri = scanned.previewUri;
       if (frameUri) {
         const smallUri = await getPhotoThumbnailUri(frameUri);
         scanned.perceptualHash = await computeDHash(smallUri ?? frameUri);

@@ -14,6 +14,7 @@ const SITE_URL = "https://tidyloop.app";
 const CONTACT_URL = "https://tidyloop.app/contact";
 const PRIVACY_URL = "https://tidyloop.app/privacy";
 const ABOUT_URL = "https://tidyloop.app/about";
+const SILICONCHASE_URL = "https://siliconchase.com";
 
 /**
  * The monetization model:
@@ -147,7 +148,13 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
       </Section>
 
       <Section title="About">
-        <Text style={styles.body}>Tidyloop is a product of SiliconChase.</Text>
+        <Text style={styles.body}>
+          Tidyloop is a product of{" "}
+          <Text style={styles.inlineLink} onPress={() => openLink(SILICONCHASE_URL)}>
+            Silicon Chase
+          </Text>
+          .
+        </Text>
         <Text style={styles.aboutMeta}>Founder & owner: Dr. Simeon Olaomo</Text>
         <Text style={styles.aboutMeta}>Version 1.0.0</Text>
         <Pressable onPress={() => openLink(ABOUT_URL)}>
@@ -186,6 +193,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 14, color: "#555", lineHeight: 20 },
   aboutMeta: { fontSize: 12, color: "#8a92a8" },
   aboutLink: { fontSize: 13, color: "#2a6df4", fontWeight: "600", marginTop: 4 },
+  inlineLink: { color: "#2a6df4", fontWeight: "700" },
   linkList: { marginHorizontal: -16, marginVertical: -16, borderRadius: 18, overflow: "hidden" },
   linkRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 15, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#f0f2f8" },
   linkRowLast: { borderBottomWidth: 0 },

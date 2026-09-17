@@ -104,7 +104,14 @@ export default function ReviewQueueScreen({ queue, onFinished }: Props) {
         {...panResponder.panHandlers}
         style={[styles.card, { transform: [...position.getTranslateTransform(), { rotate }] }]}
       >
-        <Image source={{ uri: current.asset.localUri ?? current.asset.uri }} style={styles.thumbnail} resizeMode="cover" />
+        {current.asset.previewUri ? (
+          <Image source={{ uri: current.asset.previewUri }} style={styles.thumbnail} resizeMode="cover" />
+        ) : (
+          <View style={[styles.thumbnail, styles.noPreview]}>
+            <Text style={styles.noPreviewIcon}>{current.asset.kind === "video" ? "🎬" : "🖼️"}</Text>
+            <Text style={styles.noPreviewText}>No preview available</Text>
+          </View>
+        )}
 
         <Animated.View pointerEvents="none" style={[styles.overlay, styles.keepOverlay, { opacity: keepOverlayOpacity }]}>
           <Text style={styles.overlayText}>KEEP</Text>
@@ -241,6 +248,9 @@ const styles = StyleSheet.create({
   counter: { color: "#888" },
   card: { width: "100%", aspectRatio: 0.8, borderRadius: 26, backgroundColor: "#eee", overflow: "hidden" },
   thumbnail: { width: "100%", height: "70%" },
+  noPreview: { alignItems: "center", justifyContent: "center", backgroundColor: "#e4e8f2", gap: 6 },
+  noPreviewIcon: { fontSize: 36 },
+  noPreviewText: { fontSize: 12, color: "#8a92a8", fontWeight: "600" },
   overlay: { position: "absolute", top: 28, paddingVertical: 8, paddingHorizontal: 18, borderRadius: 999, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
   keepOverlay: { left: 24, backgroundColor: "#2a8f4f", transform: [{ rotate: "-12deg" }] },
   deleteOverlay: { right: 24, backgroundColor: "#e05555", transform: [{ rotate: "12deg" }] },

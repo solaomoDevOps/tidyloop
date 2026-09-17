@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, Animated, Easing } from "react-native";
-import { ScanCategoryResult, ScanCategoryId } from "../types";
+import { View, Text, Pressable, StyleSheet, ScrollView, Animated, Easing, Alert } from "react-native";
+import { ScanCategoryResult, ScanCategoryId, ReviewAction, DuplicateGroup } from "../types";
 import { SCAN_CATEGORIES } from "../services/scanning/categoryScanner";
 import { formatBytes } from "../components/format";
-import { categoryColors } from "../theme/colors";
+import { categoryColors, colors } from "../theme/colors";
 import { getTotalFreedBytes } from "../services/storage/db";
 import { FREE_TIER_CAP_BYTES } from "../services/plan/planLimits";
 
@@ -12,13 +12,45 @@ interface Props {
   isPro: boolean;
   onReviewCategory: (categoryId: ScanCategoryId) => void;
   onUpgrade: () => void;
+  onSmartClean: (decisions: ReviewAction[], groups: DuplicateGroup[]) => void;
 }
 
-export default function CategoryResultsScreen({ results, isPro, onReviewCategory, onUpgrade }: Props) {
+export default function CategoryResultsScreen({ results, isPro, onReviewCategory, onUpgrade, onSmartClean }: Props) {
   const totalBytes = results.reduce((s, r) => s + r.reclaimableBytes, 0);
   const totalItems = results.reduce((s, r) => s + r.assets.length, 0);
   const freedSoFar = getTotalFreedBytes();
   const usageFraction = Math.min(1, freedSoFar / FREE_TIER_CAP_BYTES);
+
+  // Smart Clean only ever touches EXACT duplicates — byte-identical files,
+  // zero ambiguity about which copy to keep. "Similar" (near-duplicate,
+  // perceptual-hash) groups always go through the manual side-by-side
+  // compare instead, since "which one is best" there is a judgment call.
+  const duplicatesResult = results.find((r) => r.categoryId === "duplicates");
+  const exactGroups = (duplicatesResult?.duplicateGroups ?? []).filter((g) => g.kind === "exact");
+  const smartCleanAssets = exactGroups.flatMap((g) => g.assets.filter((a) => a.id !== g.recommendedKeepId));
+  const smartCleanBytes = smartCleanAssets.reduce((s, a) => s + a.sizeBytes, 0);
+
+  function handleSmartClean() {
+    Alert.alert(
+      "Clean up exact duplicates?",
+      `This deletes ${smartCleanAssets.length} exact duplicate item${smartCleanAssets.length === 1 ? "" : "s"} (keeping the best copy of each), freeing ${formatBytes(smartCleanBytes)}. Nothing else is touched, and you'll still get the normal delete confirmation.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clean up",
+          onPress: () => {
+            const now = Date.now();
+            const decisions: ReviewAction[] = smartCleanAssets.map((a) => ({
+              assetId: a.id,
+              decision: "delete",
+              decidedAt: now,
+            }));
+            onSmartClean(decisions, exactGroups);
+          },
+        },
+      ]
+    );
+  }
 
   const headlineAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -36,6 +68,21 @@ export default function CategoryResultsScreen({ results, isPro, onReviewCategory
         <Text style={styles.headline}>{formatBytes(totalBytes)}</Text>
         <Text style={styles.subheadline}>reclaimable across {totalItems} items</Text>
       </Animated.View>
+
+      {smartCleanAssets.length > 0 && (
+        <Pressable style={styles.smartCleanBanner} onPress={handleSmartClean}>
+          <Text style={styles.smartCleanIcon}>⚡</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.smartCleanTitle}>Smart Clean available</Text>
+            <Text style={styles.smartCleanSubtitle}>
+              {smartCleanAssets.length} exact duplicate{smartCleanAssets.length === 1 ? "" : "s"} · {formatBytes(smartCleanBytes)}
+            </Text>
+          </View>
+          <View style={styles.smartCleanButton}>
+            <Text style={styles.smartCleanButtonText}>Clean up</Text>
+          </View>
+        </Pressable>
+      )}
 
       {!isPro && (
         <Pressable style={styles.capBanner} onPress={onUpgrade}>
@@ -151,6 +198,12 @@ const styles = StyleSheet.create({
   content: { padding: 20, gap: 14, paddingBottom: 40 },
   headline: { fontSize: 34, fontWeight: "800", color: "#1b2a4a", textAlign: "center", marginTop: 8 },
   subheadline: { fontSize: 14, color: "#6b7488", textAlign: "center", marginBottom: 12 },
+  smartCleanBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.navy, borderRadius: 18, padding: 16, shadowColor: colors.navy, shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  smartCleanIcon: { fontSize: 26 },
+  smartCleanTitle: { color: "white", fontWeight: "800", fontSize: 15 },
+  smartCleanSubtitle: { color: "#cfd8ee", fontSize: 12, marginTop: 2 },
+  smartCleanButton: { backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 14 },
+  smartCleanButtonText: { color: colors.navy, fontWeight: "800", fontSize: 13 },
   capBanner: { backgroundColor: "white", borderRadius: 16, padding: 14, gap: 8, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   capBannerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   capBannerLabel: { fontSize: 13, fontWeight: "700", color: "#1b2a4a" },

@@ -29,7 +29,11 @@ export interface ScanCategoryResult {
 export interface ScannedAsset {
   id: string;              // native asset/file id
   uri: string;              // local URI (ph:// on iOS, file:// on Android) — not directly loadable by <Image> on iOS
-  localUri?: string;        // file:// path resolved via getAssetInfoAsync, safe to pass to <Image>
+  localUri?: string;        // file:// path resolved via getAssetInfoAsync — the REAL file (video files included),
+                             // used for compress/backup/hash, NOT guaranteed decodable by <Image> (videos aren't)
+  previewUri?: string;      // always a decodable-by-<Image> uri when present: same as localUri for photos,
+                             // a resolved still-frame for videos. Undefined means no preview could be produced
+                             // (e.g. an iCloud-only asset that failed to download) — show a placeholder, not a broken <Image>.
   kind: AssetKind;
   sizeBytes: number;
   createdAt: number;        // epoch ms

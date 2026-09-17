@@ -84,7 +84,7 @@ export default function DuplicateCompareScreen({ groups, onFinished }: Props) {
       </Text>
       <Text style={styles.subheadline}>Tap the one you want to keep — the rest will be marked to delete.</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardRow}>
+      <ScrollView contentContainerStyle={styles.cardGrid}>
         {group.assets.map((asset) => (
           <DuplicateCard
             key={asset.id}
@@ -126,7 +126,13 @@ function DuplicateCard({
   return (
     <Pressable style={[cardStyles.card, isSelected && cardStyles.cardSelected]} onPress={onPress}>
       <View style={cardStyles.imageWrap}>
-        <Image source={{ uri: asset.localUri ?? asset.uri }} style={cardStyles.image} resizeMode="cover" />
+        {asset.previewUri ? (
+          <Image source={{ uri: asset.previewUri }} style={cardStyles.image} resizeMode="cover" />
+        ) : (
+          <View style={[cardStyles.image, cardStyles.noPreview]}>
+            <Text style={cardStyles.noPreviewIcon}>{asset.kind === "video" ? "🎬" : "🖼️"}</Text>
+          </View>
+        )}
         {isSuggested && (
           <View style={cardStyles.suggestedBadge}>
             <Text style={cardStyles.suggestedBadgeText}>Suggested</Text>
@@ -154,7 +160,7 @@ const styles = StyleSheet.create({
   counter: { textAlign: "center", color: "#8a92a8", fontSize: 12, fontWeight: "600" },
   headline: { textAlign: "center", fontSize: 22, fontWeight: "800", color: "#1b2a4a", paddingHorizontal: 20 },
   subheadline: { textAlign: "center", fontSize: 13, color: "#6b7488", paddingHorizontal: 24 },
-  cardRow: { paddingHorizontal: 20, gap: 14, paddingVertical: 8 },
+  cardGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 8, rowGap: 16 },
   footer: { paddingHorizontal: 20, gap: 10, marginTop: 4 },
   savingsText: { textAlign: "center", fontSize: 13, color: colors.green, fontWeight: "700" },
   primaryButton: { backgroundColor: colors.blue, borderRadius: 16, paddingVertical: 16, alignItems: "center" },
@@ -167,10 +173,12 @@ const styles = StyleSheet.create({
 });
 
 const cardStyles = StyleSheet.create({
-  card: { width: 150, borderRadius: 18, backgroundColor: "white", padding: 10, gap: 4, borderWidth: 2, borderColor: "transparent", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  card: { width: "48%", borderRadius: 18, backgroundColor: "white", padding: 10, gap: 4, borderWidth: 2, borderColor: "transparent", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   cardSelected: { borderColor: colors.blue },
   imageWrap: { width: "100%", aspectRatio: 1, borderRadius: 12, overflow: "hidden", backgroundColor: "#eee", marginBottom: 4 },
   image: { width: "100%", height: "100%" },
+  noPreview: { alignItems: "center", justifyContent: "center", backgroundColor: "#e4e8f2" },
+  noPreviewIcon: { fontSize: 30 },
   suggestedBadge: { position: "absolute", top: 6, left: 6, backgroundColor: colors.green, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   suggestedBadgeText: { color: "white", fontSize: 9, fontWeight: "800" },
   keepBadge: { position: "absolute", bottom: 6, right: 6, backgroundColor: colors.blue, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },

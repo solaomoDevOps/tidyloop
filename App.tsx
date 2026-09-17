@@ -23,7 +23,7 @@ import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { getQuickPreviewAssets } from "./src/services/scanning/photoScanner";
 import { initIAPConnection, teardownIAPConnection, purchasePackage, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
 import { retryPendingLead } from "./src/services/leads/leadCapture";
-import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId, DuplicateGroup } from "./src/types";
+import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId, DuplicateGroup, ReviewAction } from "./src/types";
 import type { PurchasesPackage } from "react-native-purchases";
 
 const Stack = createNativeStackNavigator();
@@ -156,21 +156,26 @@ export default function App() {
                   .sort((a, b) => a.score.score - b.score.score);
                 props.navigation.navigate("Review", { queue, returnTo: "Results" });
               }}
+              onSmartClean={(decisions, groups) => {
+                props.navigation.navigate("Review", { prebuiltDecisions: decisions, duplicateGroups: groups, returnTo: "Results" });
+              }}
             />
           )}
         </Stack.Screen>
 
         <Stack.Screen name="Review" options={{ title: "Review" }}>
           {(props) => {
-            const { queue, duplicateGroups, returnTo } = props.route.params as {
+            const { queue, duplicateGroups, prebuiltDecisions, returnTo } = props.route.params as {
               queue?: { asset: ScannedAsset; score: UsefulnessScore }[];
               duplicateGroups?: DuplicateGroup[];
+              prebuiltDecisions?: ReviewAction[];
               returnTo: "Home" | "Results";
             };
             return (
               <ReviewFlowScreen
                 queue={queue}
                 duplicateGroups={duplicateGroups}
+                prebuiltDecisions={prebuiltDecisions}
                 isPro={isPro}
                 onComplete={() => props.navigation.navigate(returnTo)}
                 onUpgradeNeeded={() => props.navigation.navigate("Pro")}

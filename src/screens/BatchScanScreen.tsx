@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, Animated, StyleSheet, Easing, Pressable } from "react-native";
+import { View, Text, Animated, StyleSheet, Easing, Pressable, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SCAN_CATEGORIES } from "../services/scanning/categoryScanner";
 import { runCategorizedScan } from "../services/scanning/categoryScanner";
@@ -32,6 +32,38 @@ export default function BatchScanScreen({ onDone, isPro }: Props) {
   const [displayedTotal, setDisplayedTotal] = useState(0);
   const statesRef = useRef(categoryStates);
   statesRef.current = categoryStates;
+
+  const heroFloat = useRef(new Animated.Value(0)).current;
+  const sparkleAnims = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    const floatLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(heroFloat, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(heroFloat, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    floatLoop.start();
+
+    const sparkleLoops = sparkleAnims.map((anim, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 500),
+          Animated.timing(anim, { toValue: 1, duration: 1400, easing: Easing.out(Easing.sin), useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+          Animated.delay(1000),
+        ])
+      )
+    );
+    sparkleLoops.forEach((l) => l.start());
+
+    return () => {
+      floatLoop.stop();
+      sparkleLoops.forEach((l) => l.stop());
+    };
+  }, []);
+
+  const heroTranslateY = heroFloat.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
 
   useEffect(() => {
     const sub = totalReclaimed.addListener(({ value }) => setDisplayedTotal(value));
@@ -91,24 +123,56 @@ export default function BatchScanScreen({ onDone, isPro }: Props) {
 
   return (
     <LinearGradient colors={["#1b2a4a", "#2a4d8f", "#3f7ce0"]} style={styles.container}>
-      <Text style={styles.title}>Scanning your storage</Text>
-      {isPro && (
-        <View style={styles.proBadge}>
-          <Text style={styles.proBadgeText}>⚡ Pro speed — 2x concurrency</Text>
-        </View>
-      )}
-      <Text style={styles.reclaimedSoFar}>{formatBytes(displayedTotal)} found so far</Text>
-
-      <View style={styles.list}>
-        {SCAN_CATEGORIES.map((cat) => (
-          <CategoryRow key={cat.id} label={cat.label} icon={cat.icon} state={categoryStates[cat.id]} />
+      <View style={styles.sparkleLayer} pointerEvents="none">
+        {sparkleAnims.map((anim, i) => (
+          <Animated.Text
+            key={i}
+            style={[
+              styles.sparkle,
+              sparklePositions[i],
+              {
+                opacity: anim,
+                transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.2] }) }],
+              },
+            ]}
+          >
+            ✨
+          </Animated.Text>
         ))}
       </View>
 
-      <Text style={styles.footnote}>Every result gets reviewed by you before anything is removed.</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Animated.Image
+          source={require("../../assets/illustrations/onboarding-scan.png")}
+          style={[styles.hero, { transform: [{ translateY: heroTranslateY }] }]}
+          resizeMode="contain"
+        />
+
+        <Text style={styles.title}>Scanning your storage</Text>
+        {isPro && (
+          <View style={styles.proBadge}>
+            <Text style={styles.proBadgeText}>⚡ Pro speed — 2x concurrency</Text>
+          </View>
+        )}
+        <Text style={styles.reclaimedSoFar}>{formatBytes(displayedTotal)} found so far</Text>
+
+        <View style={styles.list}>
+          {SCAN_CATEGORIES.map((cat) => (
+            <CategoryRow key={cat.id} label={cat.label} icon={cat.icon} state={categoryStates[cat.id]} />
+          ))}
+        </View>
+
+        <Text style={styles.footnote}>Every result gets reviewed by you before anything is removed.</Text>
+      </ScrollView>
     </LinearGradient>
   );
 }
+
+const sparklePositions = [
+  { top: "12%", left: "10%" } as const,
+  { top: "8%", right: "14%" } as const,
+  { top: "22%", right: "8%" } as const,
+];
 
 function CategoryRow({ label, icon, state }: { label: string; icon: string; state: CategoryUiState }) {
   const barWidth = useRef(new Animated.Value(0)).current;
@@ -173,13 +237,17 @@ function CategoryRow({ label, icon, state }: { label: string; icon: string; stat
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 80, gap: 24 },
+  container: { flex: 1 },
+  scrollContent: { padding: 24, paddingTop: 70, gap: 16, alignItems: "center", flexGrow: 1 },
+  sparkleLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  sparkle: { position: "absolute", fontSize: 22 },
+  hero: { width: 150, height: 150 },
   title: { fontSize: 24, fontWeight: "700", color: "white", textAlign: "center" },
   proBadge: { alignSelf: "center", backgroundColor: "rgba(244,185,66,0.22)", borderRadius: 10, paddingVertical: 5, paddingHorizontal: 12, marginTop: 8 },
   proBadgeText: { color: "#f4b942", fontSize: 12, fontWeight: "700" },
   reclaimedSoFar: { fontSize: 16, color: "#d7e6ff", textAlign: "center" },
-  list: { gap: 14, marginTop: 12 },
-  footnote: { fontSize: 12, color: "#cfe0ff", textAlign: "center", marginTop: "auto" },
+  list: { width: "100%", gap: 14, marginTop: 12 },
+  footnote: { fontSize: 12, color: "#cfe0ff", textAlign: "center", marginTop: "auto", paddingTop: 20 },
   errorContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12, backgroundColor: "#f7f8fc" },
   errorTitle: { fontSize: 22, fontWeight: "800", color: "#1b2a4a" },
   errorMessage: { fontSize: 14, color: "#555", textAlign: "center" },
