@@ -41,7 +41,8 @@
           "photosPermission": "Tidyloop needs access to your photo library to scan for duplicates and clutter.",
           "savePhotosPermission": "Tidyloop needs permission to update your photo library when you clean up items."
         }
-      ]
+      ],
+      "react-native-compressor"
     ],
     "experiments": {
       "reactCompiler": true

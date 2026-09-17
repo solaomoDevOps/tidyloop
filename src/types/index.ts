@@ -58,7 +58,7 @@ export interface ScoreReason {
   weight: number;            // signed contribution to the score, for transparency in the UI
 }
 
-export type ReviewDecision = "keep" | "delete" | "skipped";
+export type ReviewDecision = "keep" | "delete" | "compress" | "skipped";
 
 export interface ReviewAction {
   assetId: string;

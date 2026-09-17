@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { View, Text, Animated, PanResponder, Pressable, StyleSheet, Image, Easing } from "react-native";
-import { ScannedAsset, UsefulnessScore, ReviewAction } from "../types";
+import { ScannedAsset, UsefulnessScore, ReviewAction, ReviewDecision } from "../types";
 import { recordReviewAction } from "../services/storage/db";
 import { formatBytes } from "../components/format";
 
@@ -38,10 +38,10 @@ export default function ReviewQueueScreen({ queue, onFinished }: Props) {
     })
   ).current;
 
-  function completeSwipe(decision: "keep" | "delete") {
+  function completeSwipe(decision: ReviewDecision) {
     if (!current) return;
-    const toX = decision === "keep" ? 500 : -500;
-    Animated.timing(position, { toValue: { x: toX, y: 0 }, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(() => {
+    const toValue = decision === "keep" ? { x: 500, y: 0 } : decision === "delete" ? { x: -500, y: 0 } : { x: 0, y: -500 };
+    Animated.timing(position, { toValue, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(() => {
       const action: ReviewAction = { assetId: current.asset.id, decision, decidedAt: Date.now() };
       recordReviewAction(action);
       const nextDecisions = [...decisions, action];
@@ -92,6 +92,8 @@ export default function ReviewQueueScreen({ queue, onFinished }: Props) {
     extrapolate: "clamp",
   });
 
+  const canCompress = current.asset.kind === "photo" || current.asset.kind === "video";
+
   return (
     <View style={styles.container}>
       <Text style={styles.counter}>
@@ -126,6 +128,11 @@ export default function ReviewQueueScreen({ queue, onFinished }: Props) {
         <Pressable style={[styles.actionButton, styles.deleteButton]} onPress={() => completeSwipe("delete")}>
           <Text style={styles.actionText}>Delete</Text>
         </Pressable>
+        {canCompress && (
+          <Pressable style={[styles.actionButton, styles.compressButton]} onPress={() => completeSwipe("compress")}>
+            <Text style={styles.actionText}>Compress</Text>
+          </Pressable>
+        )}
         <Pressable style={styles.undoButton} onPress={undo}>
           <Text style={styles.undoText}>Undo</Text>
         </Pressable>
@@ -134,7 +141,9 @@ export default function ReviewQueueScreen({ queue, onFinished }: Props) {
         </Pressable>
       </View>
 
-      <Text style={styles.hint}>Swipe right to keep, left to delete. Nothing is final until you confirm at the end.</Text>
+      <Text style={styles.hint}>
+        Swipe right to keep, left to delete, or compress to shrink instead. Nothing is final until you confirm at the end.
+      </Text>
     </View>
   );
 }
@@ -153,6 +162,7 @@ function CompletionScreen({
     .reduce((sum, d) => sum + (queue.find((q) => q.asset.id === d.assetId)?.asset.sizeBytes ?? 0), 0);
   const keptCount = decisions.filter((d) => d.decision === "keep").length;
   const deletedCount = decisions.filter((d) => d.decision === "delete").length;
+  const compressedCount = decisions.filter((d) => d.decision === "compress").length;
 
   const badgeScale = useRef(new Animated.Value(0)).current;
   const badgeRotate = useRef(new Animated.Value(0)).current;
@@ -210,8 +220,14 @@ function CompletionScreen({
 
       <Text style={completionStyles.headline}>{formatBytes(displayedBytes)} freed</Text>
       <Text style={completionStyles.subtext}>
-        {deletedCount} removed · {keptCount} kept — exactly what you chose.
+        {deletedCount} removed · {keptCount} kept
+        {compressedCount > 0 ? ` · ${compressedCount} to compress` : ""} — exactly what you chose.
       </Text>
+      {compressedCount > 0 && (
+        <Text style={completionStyles.compressNote}>
+          Compression runs next — the exact space it saves depends on each file, so it isn't counted above yet.
+        </Text>
+      )}
 
       <Pressable style={completionStyles.doneButton} onPress={onDone}>
         <Text style={completionStyles.doneButtonText}>Done</Text>
@@ -234,9 +250,10 @@ const styles = StyleSheet.create({
   reasonLine: { fontSize: 12 },
   reasonPos: { color: "#2a7a45" },
   reasonNeg: { color: "#b23b3b" },
-  actionsRow: { flexDirection: "row", gap: 16, alignItems: "center" },
-  actionButton: { paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14 },
+  actionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "center" },
+  actionButton: { paddingVertical: 14, paddingHorizontal: 22, borderRadius: 14 },
   deleteButton: { backgroundColor: "#e05555" },
+  compressButton: { backgroundColor: "#4fc3fb" },
   keepButton: { backgroundColor: "#2a8f4f" },
   actionText: { color: "white", fontWeight: "700" },
   undoButton: { paddingVertical: 10, paddingHorizontal: 16 },
@@ -253,6 +270,7 @@ const completionStyles = StyleSheet.create({
   badgeCheck: { color: "white", fontSize: 44, fontWeight: "800" },
   headline: { fontSize: 30, fontWeight: "800", color: "#1b2a4a" },
   subtext: { fontSize: 14, color: "#6b7488", textAlign: "center" },
+  compressNote: { fontSize: 12, color: "#4fc3fb", textAlign: "center", paddingHorizontal: 12 },
   doneButton: { marginTop: 24, backgroundColor: "#3f7ce0", paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14 },
   doneButtonText: { color: "white", fontWeight: "700", fontSize: 16 },
 });
