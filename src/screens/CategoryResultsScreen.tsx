@@ -133,7 +133,7 @@ function ResultCard({
         </View>
         {!isEmpty && (
           <Pressable
-            style={[styles.reviewButton, { backgroundColor: color }]}
+            style={[styles.reviewButton, { backgroundColor: color, shadowColor: color }]}
             onPress={onReview}
             onPressIn={() => Animated.spring(pressScale, { toValue: 0.96, useNativeDriver: true }).start()}
             onPressOut={() => Animated.spring(pressScale, { toValue: 1, useNativeDriver: true, friction: 4 }).start()}
@@ -165,6 +165,6 @@ const styles = StyleSheet.create({
   cardIcon: { fontSize: 24 },
   cardTitle: { fontSize: 16, fontWeight: "700", color: "#1b2a4a" },
   cardMeta: { fontSize: 13, color: "#8189a0", marginTop: 2 },
-  reviewButton: { backgroundColor: "#3f7ce0", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
+  reviewButton: { backgroundColor: "#3f7ce0", paddingVertical: 11, paddingHorizontal: 18, borderRadius: 14, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   reviewButtonText: { color: "white", fontWeight: "700", fontSize: 13 },
 });

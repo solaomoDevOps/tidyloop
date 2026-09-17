@@ -54,7 +54,16 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName={hasOnboarded ? "Home" : "Onboarding"}>
+      <Stack.Navigator
+        initialRouteName={hasOnboarded ? "Home" : "Onboarding"}
+        screenOptions={{
+          headerStyle: { backgroundColor: "#f7f8fc" },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: "800", color: "#1b2a4a", fontSize: 17 },
+          headerTintColor: "#2a6df4",
+          headerBackButtonDisplayMode: "minimal",
+        }}
+      >
         <Stack.Screen name="Onboarding" options={{ headerShown: false }}>
           {(props) => (
             <OnboardingScreen

@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, Alert, ScrollView, Share, Linking } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import * as StoreReview from "expo-store-review";
 import { getBackupSummary, getTotalFreedBytes } from "../services/storage/db";
 import { clearAllBackups } from "../services/backup/localBackup";
 import { formatBytes } from "../components/format";
 import { FREE_TIER_CAP_BYTES } from "../services/plan/planLimits";
+import { colors } from "../theme/colors";
 
 // tidyloop.app pages referenced below don't exist yet at time of writing —
 // wired up ahead of the site so the app is ready the moment they go live.
@@ -88,21 +90,21 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
     <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
       <Text style={styles.header}>Settings</Text>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Plan</Text>
+      <Section title="Plan">
         <Text style={styles.body}>
           {isPro
             ? "You're on Tidyloop Pro. Thank you."
             : `Free plan — unlimited scanning and review. Free up to ${formatBytes(FREE_TIER_CAP_BYTES)} total (${formatBytes(freedSoFar)} used).`}
         </Text>
-        <Pressable style={styles.primaryButton} onPress={onViewPro}>
-          <Text style={styles.primaryButtonText}>{isPro ? "Manage Pro" : "See what's in Pro"}</Text>
+        <Pressable onPress={onViewPro}>
+          <LinearGradient colors={[colors.blue, colors.sky]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>{isPro ? "Manage Pro" : "See what's in Pro"}</Text>
+          </LinearGradient>
         </Pressable>
-      </View>
+      </Section>
 
       {isPro && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Local backups</Text>
+        <Section title="Local backups">
           <Text style={styles.body}>
             {backupSummary.count > 0
               ? `${backupSummary.count} item${backupSummary.count === 1 ? "" : "s"} backed up on this device · ${formatBytes(backupSummary.totalBytes)}`
@@ -113,11 +115,10 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
               <Text style={styles.secondaryButtonText}>Clear local backups</Text>
             </Pressable>
           )}
-        </View>
+        </Section>
       )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pay it forward</Text>
+      <Section title="Pay it forward">
         <Text style={styles.body}>
           Every Pro purchase funds a free unlock for someone who can't afford it. {peopleHelpedThisMonth}{" "}
           people have been helped this month.
@@ -125,42 +126,48 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
         <Pressable style={styles.secondaryButton} onPress={onRequestFreeUnlock}>
           <Text style={styles.secondaryButtonText}>I can't afford Pro right now</Text>
         </Pressable>
-      </View>
+      </Section>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Privacy</Text>
+      <Section title="Privacy">
         <Text style={styles.body}>
           All scanning, hashing, and scoring happens on your device. Nothing is uploaded to any
           server, including with Pro enabled.
         </Text>
-      </View>
+      </Section>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>More</Text>
+      <Section title="More">
         <View style={styles.linkList}>
           <LinkRow label="Rate Tidyloop" onPress={handleRate} />
           <LinkRow label="Share Tidyloop" onPress={handleShare} />
           <LinkRow label="Contact us" onPress={() => openLink(CONTACT_URL)} />
-          <LinkRow label="Privacy Policy" onPress={() => openLink(PRIVACY_URL)} />
+          <LinkRow label="Privacy Policy" onPress={() => openLink(PRIVACY_URL)} last />
         </View>
-      </View>
+      </Section>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
+      <Section title="About">
         <Text style={styles.body}>Tidyloop is a product of SiliconChase.</Text>
         <Text style={styles.aboutMeta}>Founder & owner: Dr. Simeon Olaomo</Text>
         <Text style={styles.aboutMeta}>Version 1.0.0</Text>
         <Pressable onPress={() => openLink(ABOUT_URL)}>
           <Text style={styles.aboutLink}>Learn more at tidyloop.app/about</Text>
         </Pressable>
-      </View>
+      </Section>
     </ScrollView>
   );
 }
 
-function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Pressable style={styles.linkRow} onPress={onPress}>
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>{title.toUpperCase()}</Text>
+      <View style={styles.sectionCard}>{children}</View>
+    </View>
+  );
+}
+
+function LinkRow({ label, onPress, last }: { label: string; onPress: () => void; last?: boolean }) {
+  return (
+    <Pressable style={[styles.linkRow, last && styles.linkRowLast]} onPress={onPress}>
       <Text style={styles.linkRowText}>{label}</Text>
       <Text style={styles.linkRowChevron}>›</Text>
     </Pressable>
@@ -168,20 +175,22 @@ function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  scrollView: { flex: 1 },
-  container: { padding: 20, paddingBottom: 48, gap: 24 },
-  header: { fontSize: 24, fontWeight: "700" },
-  section: { gap: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: "600" },
-  body: { fontSize: 14, color: "#555" },
+  scrollView: { flex: 1, backgroundColor: "#f7f8fc" },
+  container: { padding: 20, paddingBottom: 48, gap: 22 },
+  header: { fontSize: 30, fontWeight: "800", color: "#1b2a4a", marginBottom: 2 },
+  section: { gap: 6 },
+  sectionLabel: { fontSize: 12, fontWeight: "700", color: "#8a92a8", letterSpacing: 0.6, marginLeft: 6 },
+  sectionCard: { backgroundColor: "white", borderRadius: 18, padding: 16, gap: 10, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  body: { fontSize: 14, color: "#555", lineHeight: 20 },
   aboutMeta: { fontSize: 12, color: "#8a92a8" },
   aboutLink: { fontSize: 13, color: "#2a6df4", fontWeight: "600", marginTop: 4 },
-  linkList: { backgroundColor: "white", borderRadius: 14, overflow: "hidden" },
-  linkRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#f0f2f8" },
+  linkList: { marginHorizontal: -16, marginVertical: -16, borderRadius: 18, overflow: "hidden" },
+  linkRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 15, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#f0f2f8" },
+  linkRowLast: { borderBottomWidth: 0 },
   linkRowText: { fontSize: 14, color: "#1b2a4a", fontWeight: "600" },
   linkRowChevron: { fontSize: 18, color: "#c3c9d6" },
-  primaryButton: { backgroundColor: "#2a6df4", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  primaryButtonText: { color: "white", fontWeight: "600" },
-  secondaryButton: { borderWidth: 1, borderColor: "#2a6df4", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  secondaryButtonText: { color: "#2a6df4", fontWeight: "600" },
+  primaryButton: { borderRadius: 14, paddingVertical: 13, alignItems: "center", shadowColor: colors.blue, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  primaryButtonText: { color: "white", fontWeight: "700" },
+  secondaryButton: { borderWidth: 1.5, borderColor: "#2a6df4", borderRadius: 14, paddingVertical: 12, alignItems: "center" },
+  secondaryButtonText: { color: "#2a6df4", fontWeight: "700" },
 });
