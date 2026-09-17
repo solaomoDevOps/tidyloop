@@ -159,6 +159,69 @@ export function setHasOnboarded(value: boolean): void {
   );
 }
 
+const APP_STATE_KEY_LEAD_SUBMITTED = "hasSubmittedLead";
+const APP_STATE_KEY_USER_NAME = "userName";
+
+export function getHasSubmittedLead(): boolean {
+  const row = db.getFirstSync<{ value: string }>(`SELECT value FROM app_state WHERE key = ?;`, [APP_STATE_KEY_LEAD_SUBMITTED]);
+  return row?.value === "true";
+}
+
+export function setHasSubmittedLead(value: boolean): void {
+  db.runSync(
+    `INSERT INTO app_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+    [APP_STATE_KEY_LEAD_SUBMITTED, value ? "true" : "false"]
+  );
+}
+
+/** Cached locally so the app can personalize a greeting — separate from
+ * whatever was actually submitted to the marketing backend. */
+export function getUserName(): string | null {
+  const row = db.getFirstSync<{ value: string }>(`SELECT value FROM app_state WHERE key = ?;`, [APP_STATE_KEY_USER_NAME]);
+  return row?.value ?? null;
+}
+
+export function setUserName(name: string): void {
+  db.runSync(
+    `INSERT INTO app_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+    [APP_STATE_KEY_USER_NAME, name]
+  );
+}
+
+const APP_STATE_KEY_PENDING_LEAD = "pendingLead";
+
+export interface PendingLead {
+  name: string;
+  phone: string;
+  consentedMarketing: boolean;
+}
+
+/** Set when submitLead() fails (e.g. no network) so the app can retry on
+ * next launch instead of losing the submission or blocking the user. */
+export function getPendingLead(): PendingLead | null {
+  const row = db.getFirstSync<{ value: string }>(`SELECT value FROM app_state WHERE key = ?;`, [APP_STATE_KEY_PENDING_LEAD]);
+  if (!row?.value) return null;
+  try {
+    return JSON.parse(row.value) as PendingLead;
+  } catch {
+    return null;
+  }
+}
+
+export function setPendingLead(lead: PendingLead | null): void {
+  if (lead === null) {
+    db.runSync(`DELETE FROM app_state WHERE key = ?;`, [APP_STATE_KEY_PENDING_LEAD]);
+    return;
+  }
+  db.runSync(
+    `INSERT INTO app_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+    [APP_STATE_KEY_PENDING_LEAD, JSON.stringify(lead)]
+  );
+}
+
 export interface BackupEntry {
   assetId: string;
   backupUri: string;

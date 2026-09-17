@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Animated, Easing, ActivityIndicator, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { getTotalFreedBytes } from "../services/storage/db";
+import { getTotalFreedBytes, getUserName } from "../services/storage/db";
 import { getDeviceStorageStats } from "../services/storage/deviceStorage";
 import { formatBytes } from "../components/format";
 import { colors } from "../theme/colors";
@@ -24,6 +24,7 @@ interface Props {
 export default function HomeScreen({ isPro, onStartScan, onQuickSwipe, onOpenSettings }: Props) {
   const totalFreed = getTotalFreedBytes();
   const storage = useMemo(() => getDeviceStorageStats(), []);
+  const firstName = useMemo(() => getUserName()?.split(" ")[0] ?? null, []);
 
   const [previewLoading, setPreviewLoading] = useState(false);
 
@@ -83,6 +84,8 @@ export default function HomeScreen({ isPro, onStartScan, onQuickSwipe, onOpenSet
           resizeMode="contain"
         />
       </Animated.View>
+
+      {firstName && <Text style={styles.greeting}>Hi {firstName} 👋</Text>}
 
       {storage && (
         <Animated.View style={[styles.gaugeCard, { opacity: titleOpacity }]}>
@@ -147,8 +150,8 @@ export default function HomeScreen({ isPro, onStartScan, onQuickSwipe, onOpenSet
       </View>
 
       <Text style={styles.disclosure}>
-        Everything happens on your device. Nothing is uploaded. Nothing is deleted
-        without you reviewing it first.
+        Your photos never leave your device — all scanning and review happens locally.
+        Nothing is deleted without you reviewing it first.
       </Text>
       </ScrollView>
     </LinearGradient>
@@ -170,6 +173,7 @@ const styles = StyleSheet.create({
   blobPink: { width: 220, height: 220, backgroundColor: colors.pink, opacity: 0.1, bottom: -60, right: -70 },
   blobGold: { width: 140, height: 140, backgroundColor: colors.gold, opacity: 0.14, top: "38%", right: -50 },
   logo: { width: 170, height: 112 },
+  greeting: { fontSize: 15, fontWeight: "700", color: "#1b2a4a" },
   gaugeCard: { width: "100%", backgroundColor: "white", borderRadius: 18, padding: 16, gap: 10, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   gaugeHeadline: { fontSize: 15, fontWeight: "700", color: "#1b2a4a", textAlign: "center" },
   gaugeTrack: { height: 10, borderRadius: 5, backgroundColor: "#eef1f8", overflow: "hidden" },

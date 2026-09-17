@@ -130,8 +130,10 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
 
       <Section title="Privacy">
         <Text style={styles.body}>
-          All scanning, hashing, and scoring happens on your device. Nothing is uploaded to any
-          server, including with Pro enabled.
+          All scanning, hashing, and scoring happens on your device — your photos are never
+          uploaded anywhere, including with Pro enabled. The name and phone number you gave us
+          when you set up the app are sent to Tidyloop for marketing follow-up; see our Privacy
+          Policy below for details.
         </Text>
       </Section>
 

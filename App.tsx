@@ -4,15 +4,25 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "./src/screens/HomeScreen";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
+import LeadCaptureScreen from "./src/screens/LeadCaptureScreen";
 import BatchScanScreen from "./src/screens/BatchScanScreen";
 import CategoryResultsScreen from "./src/screens/CategoryResultsScreen";
 import ReviewFlowScreen from "./src/screens/ReviewFlowScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import ProPaywallScreen from "./src/screens/ProPaywallScreen";
-import { initDb, getProStatus, setProStatus, getHasOnboarded, setHasOnboarded } from "./src/services/storage/db";
+import {
+  initDb,
+  getProStatus,
+  setProStatus,
+  getHasOnboarded,
+  setHasOnboarded,
+  getHasSubmittedLead,
+  setHasSubmittedLead,
+} from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { getQuickPreviewAssets } from "./src/services/scanning/photoScanner";
 import { initIAPConnection, teardownIAPConnection, purchasePackage, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
+import { retryPendingLead } from "./src/services/leads/leadCapture";
 import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId, DuplicateGroup } from "./src/types";
 import type { PurchasesPackage } from "react-native-purchases";
 
@@ -22,10 +32,12 @@ export default function App() {
   const [categoryResults, setCategoryResults] = useState<ScanCategoryResult[]>([]);
   const [isPro, setIsPro] = useState(false);
   const [hasOnboarded] = useState(() => getHasOnboarded());
+  const [hasSubmittedLead, setHasSubmittedLeadState] = useState(() => getHasSubmittedLead());
 
   useEffect(() => {
     initDb();
     setIsPro(getProStatus());
+    retryPendingLead().catch((err) => console.warn("retryPendingLead failed:", err));
 
     initIAPConnection(() => setIsPro(true)).catch((err) => {
       // Expected to fail in Expo Go / simulators without a signed-in
@@ -55,7 +67,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={hasOnboarded ? "Home" : "Onboarding"}
+        initialRouteName={!hasOnboarded ? "Onboarding" : !hasSubmittedLead ? "LeadCapture" : "Home"}
         screenOptions={{
           headerStyle: { backgroundColor: "#f7f8fc" },
           headerShadowVisible: false,
@@ -69,6 +81,17 @@ export default function App() {
             <OnboardingScreen
               onDone={() => {
                 setHasOnboarded(true);
+                props.navigation.replace("LeadCapture");
+              }}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="LeadCapture" options={{ headerShown: false }}>
+          {(props) => (
+            <LeadCaptureScreen
+              onDone={() => {
+                setHasSubmittedLeadState(true);
                 props.navigation.replace("Home");
               }}
             />
