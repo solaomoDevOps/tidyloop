@@ -19,9 +19,14 @@ import {
   getHasSubmittedLead,
   setHasSubmittedLead,
   getUserPhone,
+  getBackgroundScanEnabled,
 } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { getQuickPreviewAssets } from "./src/services/scanning/photoScanner";
+// Importing this (not just its exports) is what matters here — it calls
+// TaskManager.defineTask() at module load, which must happen on every
+// launch for a background task to be runnable at all.
+import { registerBackgroundScan } from "./src/services/scanning/backgroundScan";
 import { initIAPConnection, teardownIAPConnection, purchasePackage, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
 import { retryPendingLead } from "./src/services/leads/leadCapture";
 import { triggerRandomGrant, checkAndConsumeGrant, requestFreeUnlock } from "./src/services/payItForward/payItForward";
@@ -41,6 +46,13 @@ export default function App() {
     const alreadyPro = getProStatus();
     setIsPro(alreadyPro);
     retryPendingLead().catch((err) => console.warn("retryPendingLead failed:", err));
+
+    // Re-registering on every launch is cheap and idempotent — it's the
+    // simplest way to make sure the task survives an app update/reinstall
+    // without needing its own migration logic.
+    if (alreadyPro && getBackgroundScanEnabled()) {
+      registerBackgroundScan().catch((err) => console.warn("registerBackgroundScan failed:", err));
+    }
 
     if (!alreadyPro) {
       const phone = getUserPhone();

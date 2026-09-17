@@ -208,6 +208,22 @@ export function setUserPhone(phone: string): void {
   );
 }
 
+const APP_STATE_KEY_BACKGROUND_SCAN_ENABLED = "backgroundScanEnabled";
+
+/** Pro-only preference — whether periodic background pre-scans are on. */
+export function getBackgroundScanEnabled(): boolean {
+  const row = db.getFirstSync<{ value: string }>(`SELECT value FROM app_state WHERE key = ?;`, [APP_STATE_KEY_BACKGROUND_SCAN_ENABLED]);
+  return row?.value === "true";
+}
+
+export function setBackgroundScanEnabled(value: boolean): void {
+  db.runSync(
+    `INSERT INTO app_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+    [APP_STATE_KEY_BACKGROUND_SCAN_ENABLED, value ? "true" : "false"]
+  );
+}
+
 const APP_STATE_KEY_PENDING_LEAD = "pendingLead";
 
 export interface PendingLead {

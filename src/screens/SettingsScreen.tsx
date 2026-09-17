@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, Alert, ScrollView, Share, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, Alert, ScrollView, Share, Linking, Switch } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as StoreReview from "expo-store-review";
-import { getBackupSummary, getTotalFreedBytes } from "../services/storage/db";
+import { getBackupSummary, getTotalFreedBytes, getBackgroundScanEnabled, setBackgroundScanEnabled } from "../services/storage/db";
 import { clearAllBackups } from "../services/backup/localBackup";
+import { registerBackgroundScan, unregisterBackgroundScan } from "../services/scanning/backgroundScan";
 import { formatBytes } from "../components/format";
 import { FREE_TIER_CAP_BYTES } from "../services/plan/planLimits";
 import { colors } from "../theme/colors";
@@ -26,8 +27,8 @@ const SILICONCHASE_URL = "https://siliconchase.com";
  *    deleting. See src/services/plan/planLimits.ts.
  *  - Pro comes in three tiers — monthly, yearly, or a one-time lifetime
  *    unlock, all granting the same entitlement: removes the free cap
- *    entirely, plus faster batch hashing, scheduled background scans
- *    (coming soon), and a local backup-before-delete safety copy.
+ *    entirely, plus faster batch hashing, scheduled background scans,
+ *    and a local backup-before-delete safety copy.
  *  - "Pay it forward": every Pro purchase funds one free Pro unlock for
  *    someone on the waitlist who taps "I can't afford this." No ads sold
  *    against that list, no data collected beyond a device token to grant
@@ -43,7 +44,18 @@ interface Props {
 
 export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro, onRequestFreeUnlock }: Props) {
   const [backupSummary, setBackupSummary] = useState(() => getBackupSummary());
+  const [backgroundScanEnabled, setBackgroundScanEnabledState] = useState(() => isPro && getBackgroundScanEnabled());
   const freedSoFar = getTotalFreedBytes();
+
+  async function handleToggleBackgroundScan(value: boolean) {
+    setBackgroundScanEnabledState(value);
+    setBackgroundScanEnabled(value);
+    if (value) {
+      await registerBackgroundScan();
+    } else {
+      await unregisterBackgroundScan();
+    }
+  }
 
   async function handleRate() {
     try {
@@ -116,6 +128,24 @@ export default function SettingsScreen({ peopleHelpedThisMonth, isPro, onViewPro
               <Text style={styles.secondaryButtonText}>Clear local backups</Text>
             </Pressable>
           )}
+        </Section>
+      )}
+
+      {isPro && (
+        <Section title="Background scans">
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextWrap}>
+              <Text style={styles.body}>
+                Tidyloop periodically re-checks your library in the background, so results are ready
+                sooner when you open the app. iOS decides exactly when this runs.
+              </Text>
+            </View>
+            <Switch
+              value={backgroundScanEnabled}
+              onValueChange={handleToggleBackgroundScan}
+              trackColor={{ false: "#d7dbe6", true: colors.blue }}
+            />
+          </View>
         </Section>
       )}
 
@@ -203,4 +233,6 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: "white", fontWeight: "700" },
   secondaryButton: { borderWidth: 1.5, borderColor: "#2a6df4", borderRadius: 14, paddingVertical: 12, alignItems: "center" },
   secondaryButtonText: { color: "#2a6df4", fontWeight: "700" },
+  toggleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  toggleTextWrap: { flex: 1 },
 });

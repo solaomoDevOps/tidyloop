@@ -47,7 +47,8 @@ export async function deleteAssets(ids: string[]): Promise<boolean> {
 }
 
 export async function scanPhotoLibrary(
-  onProgress?: (scanned: number, total: number) => void
+  onProgress?: (scanned: number, total: number) => void,
+  options?: { deadlineAt?: number }
 ): Promise<ScannedAsset[]> {
   const granted = await requestPhotoPermission();
   if (!granted) {
@@ -68,6 +69,15 @@ export async function scanPhotoLibrary(
     pageNumber++;
     if (pageNumber > MAX_PAGES) {
       console.warn(`scanPhotoLibrary: hit MAX_PAGES safety cap (${MAX_PAGES}) — stopping.`);
+      break;
+    }
+    // Background-task runs pass a wall-clock deadline (iOS gives these
+    // seconds-to-minutes before suspending the app) — bail out between
+    // pages rather than getting killed mid-page. Results already fetched
+    // are already persisted via upsertAssets below, so this is always
+    // resumable on the next run/full scan, never lossy.
+    if (options?.deadlineAt && Date.now() > options.deadlineAt) {
+      console.log(`scanPhotoLibrary: deadline reached after ${pageNumber - 1} page(s) — stopping early.`);
       break;
     }
 

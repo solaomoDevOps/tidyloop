@@ -21,7 +21,7 @@ const TIER_LABELS: Record<TierKey, string> = { monthly: "Monthly", annual: "Year
 const FEATURES = [
   { icon: "📦", label: `No ${formatBytes(FREE_TIER_CAP_BYTES)} free limit`, detail: `Free plans can free up to ${formatBytes(FREE_TIER_CAP_BYTES)} total, lifetime — Pro removes the cap completely.`, color: colors.blue, comingSoon: false },
   { icon: "⚡", label: "Faster batch hashing", detail: "Scans run at double the concurrency — noticeably faster on large libraries.", color: colors.sky, comingSoon: false },
-  { icon: "🕒", label: "Scheduled background scans", detail: "Coming soon — Tidyloop will tidy automatically, you just review.", color: colors.green, comingSoon: true },
+  { icon: "🕒", label: "Scheduled background scans", detail: "Tidyloop periodically re-checks your library in the background, so results are ready sooner. Toggle it on in Settings.", color: colors.green, comingSoon: false },
   { icon: "💾", label: "Backup-before-delete", detail: "Every removed item gets a local safety copy on this device first — never truly gone by accident.", color: colors.pink, comingSoon: false },
 ];
 
@@ -31,7 +31,7 @@ const COMPARISON: { label: string; free: boolean | string; pro: boolean | string
   { label: "Storage you can free", free: formatBytes(FREE_TIER_CAP_BYTES), pro: "Unlimited" },
   { label: "2x faster batch hashing", free: false, pro: true },
   { label: "Local backup before delete", free: false, pro: true },
-  { label: "Scheduled background scans", free: false, pro: "soon" },
+  { label: "Scheduled background scans", free: false, pro: true },
 ];
 
 function ComparisonCell({ value }: { value: boolean | string }) {

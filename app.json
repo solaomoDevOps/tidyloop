@@ -42,7 +42,9 @@
           "savePhotosPermission": "Tidyloop needs permission to update your photo library when you clean up items."
         }
       ],
-      "react-native-compressor"
+      "react-native-compressor",
+      "expo-background-task",
+      "expo-task-manager"
     ],
     "experiments": {
       "reactCompiler": true
