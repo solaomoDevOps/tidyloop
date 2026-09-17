@@ -46,7 +46,7 @@ async function scanDirectoryRecursive(dirUri: string): Promise<ScannedAsset[]> {
 
   for (const entry of entries) {
     const uri = `${dirUri}/${entry}`;
-    const info = await FileSystem.getInfoAsync(uri, { size: true });
+    const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists) continue;
 
     if (info.isDirectory) {

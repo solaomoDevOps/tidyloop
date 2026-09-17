@@ -39,7 +39,7 @@ export async function compressAsset(asset: ScannedAsset): Promise<CompressResult
       ? await CompressorVideo.compress(asset.localUri, { compressionMethod: "auto" })
       : await CompressorImage.compress(asset.localUri, { compressionMethod: "auto", quality: 0.6 });
 
-  const info = await FileSystem.getInfoAsync(compressedUri, { size: true });
+  const info = await FileSystem.getInfoAsync(compressedUri);
   const newBytes = info.exists ? info.size ?? 0 : 0;
 
   if (newBytes <= 0 || newBytes >= asset.sizeBytes) {

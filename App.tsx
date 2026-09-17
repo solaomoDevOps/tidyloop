@@ -12,8 +12,9 @@ import ProPaywallScreen from "./src/screens/ProPaywallScreen";
 import { initDb, getProStatus, setProStatus, getHasOnboarded, setHasOnboarded } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { getQuickPreviewAssets } from "./src/services/scanning/photoScanner";
-import { initIAPConnection, teardownIAPConnection, purchasePro, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
+import { initIAPConnection, teardownIAPConnection, purchasePackage, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
 import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId } from "./src/types";
+import type { PurchasesPackage } from "react-native-purchases";
 
 const Stack = createNativeStackNavigator();
 
@@ -36,11 +37,11 @@ export default function App() {
     return () => teardownIAPConnection();
   }, []);
 
-  async function handleUpgrade() {
+  async function handleUpgrade(pkg: PurchasesPackage) {
     try {
-      await purchasePro();
+      await purchasePackage(pkg);
     } catch (err) {
-      console.warn("purchasePro failed:", err);
+      console.warn("purchasePackage failed:", err);
       Alert.alert("Purchase couldn't start", "Please try again in a moment.");
     }
   }

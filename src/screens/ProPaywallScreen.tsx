@@ -1,17 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView, Animated, Easing } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, Animated, Easing } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import type { PurchasesPackage } from "react-native-purchases";
 import { colors } from "../theme/colors";
-import { getProOffering, isIAPConfigured } from "../services/payments/iap";
+import { getProPricingTiers, isIAPConfigured, ProPricingTiers } from "../services/payments/iap";
 import { FREE_TIER_CAP_BYTES } from "../services/plan/planLimits";
 import { formatBytes } from "../components/format";
 
 interface Props {
   isPro: boolean;
-  onUpgrade: () => void;
+  onUpgrade: (pkg: PurchasesPackage) => void;
   onRestore: () => void;
   /** Only passed when RevenueCat isn't configured yet, so Pro-gated UI stays testable in dev. */
   devSimulateUnlock?: () => void;
 }
+
+type TierKey = "monthly" | "annual" | "lifetime";
+const TIER_LABELS: Record<TierKey, string> = { monthly: "Monthly", annual: "Yearly", lifetime: "Lifetime" };
 
 const FEATURES = [
   { icon: "📦", label: `No ${formatBytes(FREE_TIER_CAP_BYTES)} free limit`, detail: `Free plans can free up to ${formatBytes(FREE_TIER_CAP_BYTES)} total, lifetime — Pro removes the cap completely.`, color: colors.blue, comingSoon: false },
@@ -37,7 +42,8 @@ function ComparisonCell({ value }: { value: boolean | string }) {
 
 export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimulateUnlock }: Props) {
   const heroAnim = useRef(new Animated.Value(0)).current;
-  const [priceString, setPriceString] = useState<string | null>(null);
+  const [tiers, setTiers] = useState<ProPricingTiers | null>(null);
+  const [selectedTier, setSelectedTier] = useState<TierKey>("annual");
 
   useEffect(() => {
     Animated.timing(heroAnim, {
@@ -50,15 +56,26 @@ export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimul
 
   useEffect(() => {
     if (!isIAPConfigured) return;
-    getProOffering()
-      .then((offering) => setPriceString(offering?.availablePackages[0]?.product.priceString ?? null))
-      .catch((err) => console.warn("getProOffering failed:", err));
+    getProPricingTiers()
+      .then((t) => {
+        setTiers(t);
+        if (t.annual) setSelectedTier("annual");
+        else if (t.lifetime) setSelectedTier("lifetime");
+        else if (t.monthly) setSelectedTier("monthly");
+      })
+      .catch((err) => console.warn("getProPricingTiers failed:", err));
   }, []);
-
-  const priceDisplay = !isIAPConfigured ? "Price set at checkout" : priceString ?? "Loading price…";
 
   const heroOpacity = heroAnim;
   const heroScale = heroAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+
+  const availableTierKeys = (["monthly", "annual", "lifetime"] as TierKey[]).filter((k) => tiers?.[k]);
+  const selectedPackage = tiers?.[selectedTier] ?? null;
+
+  const savingsBadge =
+    tiers?.annual && tiers?.monthly && tiers.annual.product.pricePerMonth != null
+      ? computeSavingsPercent(tiers.monthly.product.price, tiers.annual.product.pricePerMonth)
+      : null;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -69,12 +86,41 @@ export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimul
       />
 
       <Text style={styles.title}>Tidyloop Pro</Text>
-      <Text style={styles.subtitle}>One-time unlock. No subscription, ever.</Text>
+      <Text style={styles.subtitle}>Pick monthly, yearly, or unlock it for good.</Text>
 
-      {!isPro && (
+      {!isPro && availableTierKeys.length > 0 && (
+        <>
+          <View style={styles.tierTabs}>
+            {availableTierKeys.map((key) => (
+              <Pressable
+                key={key}
+                style={[styles.tierTab, selectedTier === key && styles.tierTabActive]}
+                onPress={() => setSelectedTier(key)}
+              >
+                <Text style={[styles.tierTabText, selectedTier === key && styles.tierTabTextActive]}>
+                  {TIER_LABELS[key]}
+                </Text>
+                {key === "annual" && savingsBadge && savingsBadge > 0 && (
+                  <View style={styles.savingsBadge}>
+                    <Text style={styles.savingsBadgeText}>Save {savingsBadge}%</Text>
+                  </View>
+                )}
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.priceBlock}>
+            <Text style={styles.priceText}>{selectedPackage?.product.priceString ?? "—"}</Text>
+            <Text style={styles.priceCaption}>
+              {selectedTier === "lifetime" ? "one-time purchase, yours forever" : `billed ${selectedTier}`}
+            </Text>
+          </View>
+        </>
+      )}
+
+      {!isPro && availableTierKeys.length === 0 && (
         <View style={styles.priceBlock}>
-          <Text style={styles.priceText}>{priceDisplay}</Text>
-          <Text style={styles.priceCaption}>one-time purchase, not a subscription</Text>
+          <Text style={styles.priceText}>{isIAPConfigured ? "Loading price…" : "Price set at checkout"}</Text>
         </View>
       )}
 
@@ -122,9 +168,21 @@ export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimul
         </View>
       ) : (
         <>
-          <Pressable style={styles.primaryButton} onPress={onUpgrade}>
-            <Text style={styles.primaryButtonText}>Unlock Pro</Text>
-          </Pressable>
+          {selectedPackage ? (
+            <Pressable onPress={() => onUpgrade(selectedPackage)}>
+              <LinearGradient colors={[colors.blue, colors.sky]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>
+                  {selectedTier === "lifetime" ? "Unlock Pro" : `Start ${TIER_LABELS[selectedTier]}`}
+                </Text>
+              </LinearGradient>
+            </Pressable>
+          ) : (
+            <View style={styles.disabledButton}>
+              <Text style={styles.disabledButtonText}>
+                {isIAPConfigured ? "Loading Pro pricing…" : "Pro pricing isn't configured yet"}
+              </Text>
+            </View>
+          )}
           <Pressable style={styles.restoreLink} onPress={onRestore}>
             <Text style={styles.restoreLinkText}>Restore previous purchase</Text>
           </Pressable>
@@ -145,15 +203,29 @@ export default function ProPaywallScreen({ isPro, onUpgrade, onRestore, devSimul
   );
 }
 
+/** % saved per-month by going annual vs. paying the monthly price every month. */
+function computeSavingsPercent(monthlyPrice: number, annualPricePerMonth: number): number | null {
+  if (!monthlyPrice || monthlyPrice <= 0) return null;
+  const percent = Math.round((1 - annualPricePerMonth / monthlyPrice) * 100);
+  return percent > 0 ? percent : null;
+}
+
 const styles = StyleSheet.create({
   container: { flexGrow: 1, alignItems: "center", padding: 24, gap: 10, backgroundColor: "#f7f8fc" },
-  hero: { width: 180, height: 180 },
+  hero: { width: 170, height: 170 },
   title: { fontSize: 26, fontWeight: "800", color: "#1b2a4a" },
   subtitle: { fontSize: 14, color: "#5a6482", marginBottom: 8 },
-  priceBlock: { alignItems: "center", marginTop: 4, marginBottom: 4 },
-  priceText: { fontSize: 30, fontWeight: "800", color: colors.blue },
+  tierTabs: { flexDirection: "row", backgroundColor: "#eef1f8", borderRadius: 16, padding: 4, width: "100%", marginTop: 4 },
+  tierTab: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  tierTabActive: { backgroundColor: "white", shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  tierTabText: { fontSize: 13, fontWeight: "700", color: "#8a92a8" },
+  tierTabTextActive: { color: "#1b2a4a" },
+  savingsBadge: { position: "absolute", top: -10, right: 4, backgroundColor: colors.green, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  savingsBadgeText: { color: "white", fontSize: 9, fontWeight: "800" },
+  priceBlock: { alignItems: "center", marginTop: 12, marginBottom: 4 },
+  priceText: { fontSize: 34, fontWeight: "800", color: colors.blue },
   priceCaption: { fontSize: 12, color: "#8a92a8", marginTop: 2 },
-  table: { width: "100%", borderRadius: 16, backgroundColor: "white", padding: 14, marginTop: 8, gap: 10, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  table: { width: "100%", borderRadius: 16, backgroundColor: "white", padding: 14, marginTop: 12, gap: 10, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   tableHeaderRow: { flexDirection: "row", alignItems: "center", paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: "#eef1f8" },
   tableLabelCol: { flex: 1 },
   tableHeaderCell: { fontSize: 12, fontWeight: "700", color: "#8a92a8", textAlign: "center" },
@@ -175,8 +247,10 @@ const styles = StyleSheet.create({
   statusTag: { fontSize: 11, fontWeight: "700", paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, overflow: "hidden" },
   statusTagActive: { color: colors.green, backgroundColor: colors.green + "1f" },
   statusTagSoon: { color: "#a5730f", backgroundColor: "#f4b94222" },
-  primaryButton: { backgroundColor: "#2a6df4", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 40, marginTop: 8, width: "100%", alignItems: "center" },
-  primaryButtonText: { color: "white", fontSize: 16, fontWeight: "700" },
+  primaryButton: { borderRadius: 16, paddingVertical: 17, paddingHorizontal: 40, marginTop: 8, width: "100%", alignItems: "center", shadowColor: colors.blue, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
+  primaryButtonText: { color: "white", fontSize: 16, fontWeight: "800" },
+  disabledButton: { borderRadius: 16, paddingVertical: 17, width: "100%", alignItems: "center", backgroundColor: "#e4e8f2", marginTop: 8 },
+  disabledButtonText: { color: "#8a92a8", fontSize: 14, fontWeight: "600" },
   restoreLink: { paddingVertical: 10 },
   restoreLinkText: { color: "#2a6df4", fontSize: 13, textDecorationLine: "underline" },
   thanksBox: { backgroundColor: "#eaf7ee", borderRadius: 12, padding: 16, width: "100%", alignItems: "center", marginTop: 8 },

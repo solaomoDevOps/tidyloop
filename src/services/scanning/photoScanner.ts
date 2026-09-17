@@ -136,7 +136,7 @@ async function buildAssetMetadata(asset: MediaLibrary.Asset): Promise<ScannedAss
   let fileInfo: any = { exists: false };
   if (localUri) {
     try {
-      fileInfo = await FileSystem.getInfoAsync(localUri, { size: true });
+      fileInfo = await FileSystem.getInfoAsync(localUri);
     } catch (err) {
       console.warn("getInfoAsync failed for", localUri, err);
     }

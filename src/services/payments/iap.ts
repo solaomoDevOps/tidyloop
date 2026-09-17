@@ -1,19 +1,25 @@
 /**
  * iap.ts
  *
- * Real one-time Pro purchase via RevenueCat (react-native-purchases), which
- * wraps Apple/Google's own purchase systems — required for unlocking any
+ * Pro purchases via RevenueCat (react-native-purchases), which wraps
+ * Apple/Google's own purchase systems — required for unlocking any
  * digital feature inside the app (Stripe cannot be used for this, per
  * App Store/Play Store policy).
  *
+ * Three tiers, side by side: a one-time lifetime unlock, and monthly/
+ * annual subscriptions — all granting the same "pro" entitlement.
+ *
  * SETUP REQUIRED BEFORE THIS WORKS (not code — dashboard configuration):
  *   1. Create a free RevenueCat account at revenuecat.com, add your app.
- *   2. In App Store Connect / Play Console, create your one-time Pro
- *      unlock product (see earlier README notes), then link it inside
- *      RevenueCat under Products.
- *   3. In RevenueCat, create an Entitlement called "pro" and attach your
- *      product to it, then create an Offering with a Package containing
- *      that product.
+ *   2. In App Store Connect / Play Console, create THREE products: a
+ *      non-consumable lifetime unlock, an auto-renewable monthly
+ *      subscription, and an auto-renewable annual subscription. Link all
+ *      three inside RevenueCat under Products.
+ *   3. In RevenueCat, create an Entitlement called "pro" and attach all
+ *      three products to it, then create an Offering with three
+ *      Packages using the predefined "Lifetime", "Monthly", and "Annual"
+ *      package types (getProOffering() below reads offering.lifetime /
+ *      .monthly / .annual, which only populate for those exact types).
  *   4. Paste your RevenueCat public API keys below (Project Settings >
  *      API Keys in the RevenueCat dashboard — separate keys for iOS/Android).
  *
@@ -21,7 +27,7 @@
  * instead of crashing — the rest of the app works fine either way.
  */
 
-import Purchases, { CustomerInfo, PurchasesOffering, LOG_LEVEL } from "react-native-purchases";
+import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage, LOG_LEVEL } from "react-native-purchases";
 import { Platform } from "react-native";
 import { setProStatus } from "../storage/db";
 
@@ -78,12 +84,25 @@ export async function getProOffering(): Promise<PurchasesOffering | null> {
   return offerings.current ?? null;
 }
 
-export async function purchasePro(): Promise<void> {
+export interface ProPricingTiers {
+  lifetime: PurchasesPackage | null;
+  monthly: PurchasesPackage | null;
+  annual: PurchasesPackage | null;
+}
+
+/** Reads the three predefined package types straight off the offering —
+ * these only populate if the RevenueCat dashboard Offering actually uses
+ * the "Lifetime"/"Monthly"/"Annual" predefined package identifiers. */
+export async function getProPricingTiers(): Promise<ProPricingTiers> {
   const offering = await getProOffering();
-  const pkg = offering?.availablePackages[0];
-  if (!pkg) {
-    throw new Error("No Pro package configured in RevenueCat offerings yet — set up Products/Entitlements/Offerings in the RevenueCat dashboard.");
-  }
+  return {
+    lifetime: offering?.lifetime ?? null,
+    monthly: offering?.monthly ?? null,
+    annual: offering?.annual ?? null,
+  };
+}
+
+export async function purchasePackage(pkg: PurchasesPackage): Promise<void> {
   const { customerInfo } = await Purchases.purchasePackage(pkg);
   handleCustomerInfo(customerInfo, () => {});
 }

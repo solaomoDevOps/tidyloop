@@ -21,9 +21,10 @@ const ABOUT_URL = "https://tidyloop.app/about";
  *  - Free can actually FREE up to FREE_TIER_CAP_BYTES cumulatively
  *    (lifetime, via freed_space_log) before Pro is required to keep
  *    deleting. See src/services/plan/planLimits.ts.
- *  - Pro is a single one-time unlock (not a subscription): removes the
- *    free cap entirely, plus faster batch hashing, scheduled background
- *    scans (coming soon), and a local backup-before-delete safety copy.
+ *  - Pro comes in three tiers — monthly, yearly, or a one-time lifetime
+ *    unlock, all granting the same entitlement: removes the free cap
+ *    entirely, plus faster batch hashing, scheduled background scans
+ *    (coming soon), and a local backup-before-delete safety copy.
  *  - "Pay it forward": every Pro purchase funds one free Pro unlock for
  *    someone on the waitlist who taps "I can't afford this." No ads sold
  *    against that list, no data collected beyond a device token to grant

@@ -68,7 +68,9 @@ export default function BatchScanScreen({ onDone, isPro }: Props) {
         setErrorMessage(err?.message ?? "Something went wrong during the scan.");
       });
 
-    return () => sub && totalReclaimed.removeListener(sub);
+    return () => {
+      if (sub) totalReclaimed.removeListener(sub);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

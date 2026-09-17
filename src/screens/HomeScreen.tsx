@@ -164,7 +164,7 @@ function getStorageTone(usedFraction: number): { headline: string; color: string
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 24, paddingTop: 70, alignItems: "center", gap: 12 },
-  blobLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  blobLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden" },
   blob: { position: "absolute", borderRadius: 999 },
   blobBlue: { width: 260, height: 260, backgroundColor: colors.blue, opacity: 0.12, top: -80, left: -90 },
   blobPink: { width: 220, height: 220, backgroundColor: colors.pink, opacity: 0.1, bottom: -60, right: -70 },
