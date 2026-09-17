@@ -11,6 +11,7 @@ import SettingsScreen from "./src/screens/SettingsScreen";
 import ProPaywallScreen from "./src/screens/ProPaywallScreen";
 import { initDb, getProStatus, setProStatus, getHasOnboarded, setHasOnboarded } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
+import { getQuickPreviewAssets } from "./src/services/scanning/photoScanner";
 import { initIAPConnection, teardownIAPConnection, purchasePro, restorePurchases, isIAPConfigured } from "./src/services/payments/iap";
 import { ScannedAsset, UsefulnessScore, ScanCategoryResult, ScanCategoryId } from "./src/types";
 
@@ -65,7 +66,27 @@ export default function App() {
         </Stack.Screen>
 
         <Stack.Screen name="Home" options={{ title: "Tidyloop" }}>
-          {(props) => <HomeScreen onStartScan={() => props.navigation.navigate("Scanning")} onOpenSettings={() => props.navigation.navigate("Settings")} />}
+          {(props) => (
+            <HomeScreen
+              isPro={isPro}
+              onStartScan={() => props.navigation.navigate("Scanning")}
+              onOpenSettings={() => props.navigation.navigate("Settings")}
+              onQuickSwipe={async () => {
+                try {
+                  const assets = await getQuickPreviewAssets(30);
+                  if (assets.length === 0) {
+                    Alert.alert("Nothing to preview", "We couldn't find any recent photos right now.");
+                    return;
+                  }
+                  const queue = assets.map((asset) => ({ asset, score: scoreAsset(asset) }));
+                  props.navigation.navigate("Review", { queue, returnTo: "Home" });
+                } catch (err) {
+                  console.warn("Quick preview failed:", err);
+                  Alert.alert("Couldn't load preview", err instanceof Error ? err.message : "Something went wrong loading your photos.");
+                }
+              }}
+            />
+          )}
         </Stack.Screen>
 
         <Stack.Screen name="Scanning" options={{ headerShown: false }}>
@@ -96,7 +117,7 @@ export default function App() {
                 const queue = category.assets
                   .map((asset) => ({ asset, score: scoreAsset(asset) }))
                   .sort((a, b) => a.score.score - b.score.score);
-                props.navigation.navigate("Review", { queue });
+                props.navigation.navigate("Review", { queue, returnTo: "Results" });
               }}
             />
           )}
@@ -104,12 +125,15 @@ export default function App() {
 
         <Stack.Screen name="Review" options={{ title: "Review" }}>
           {(props) => {
-            const { queue } = props.route.params as { queue: { asset: ScannedAsset; score: UsefulnessScore }[] };
+            const { queue, returnTo } = props.route.params as {
+              queue: { asset: ScannedAsset; score: UsefulnessScore }[];
+              returnTo: "Home" | "Results";
+            };
             return (
               <ReviewFlowScreen
                 queue={queue}
                 isPro={isPro}
-                onComplete={() => props.navigation.navigate("Results")}
+                onComplete={() => props.navigation.navigate(returnTo)}
                 onUpgradeNeeded={() => props.navigation.navigate("Pro")}
               />
             );

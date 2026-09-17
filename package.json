@@ -22,6 +22,7 @@
     "expo-media-library": "^57.0.5",
     "expo-splash-screen": "~57.0.0",
     "expo-sqlite": "~16.0.0",
+    "expo-store-review": "~57.0.3",
     "expo-video-thumbnails": "~57.0.2",
     "react": "19.2.3",
     "react-native": "0.86.3",

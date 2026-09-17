@@ -121,7 +121,9 @@ export async function scanPhotoLibrary(
   return results;
 }
 
-async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, CachedAssetMeta>): Promise<ScannedAsset> {
+/** Metadata-only pass — no hashing. Shared by the full scan (which adds
+ * hashing on top) and by the lightweight quick-preview fetch below. */
+async function buildAssetMetadata(asset: MediaLibrary.Asset): Promise<ScannedAsset> {
   let info: any = {};
   try {
     info = await MediaLibrary.getAssetInfoAsync(asset);
@@ -145,7 +147,7 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
   const isLivePhoto = subtypes.includes("livePhoto");
   const isVideo = asset.mediaType === "video";
 
-  const scanned: ScannedAsset = {
+  return {
     id: asset.id,
     uri: asset.uri,
     localUri,
@@ -159,6 +161,45 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
     height: asset.height,
     screenshotLikely: isLikelyScreenshot(asset.filename, asset.width, asset.height),
   };
+}
+
+/**
+ * Fast path for the landing screen's "Quick swipe": grabs the most recent
+ * assets and resolves just enough metadata to display and score them —
+ * no perceptual/exact hashing, so it's near-instant instead of a full scan.
+ */
+export async function getQuickPreviewAssets(count: number = 30): Promise<ScannedAsset[]> {
+  const granted = await requestPhotoPermission();
+  if (!granted) {
+    throw new Error("Photo library permission denied — cannot preview.");
+  }
+
+  const page = await MediaLibrary.getAssetsAsync({
+    first: Math.max(count * 2, 60), // over-fetch since page order isn't guaranteed newest-first
+    mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
+  });
+
+  const recent = [...page.assets]
+    .filter((a) => !!a)
+    .sort((a, b) => (b.creationTime ?? 0) - (a.creationTime ?? 0))
+    .slice(0, count);
+
+  const previewAssets = await mapWithConcurrency(recent, FREE_CONCURRENCY, async (asset) => {
+    try {
+      return await buildAssetMetadata(asset);
+    } catch (err) {
+      console.warn("getQuickPreviewAssets: failed for", asset.id, err);
+      return null;
+    }
+  });
+
+  return previewAssets.filter((a): a is ScannedAsset => !!a);
+}
+
+async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, CachedAssetMeta>): Promise<ScannedAsset> {
+  const scanned = await buildAssetMetadata(asset);
+  const isVideo = scanned.kind === "video";
+  const localUri = scanned.localUri;
 
   const cached = cache.get(asset.id);
   if (cached && cached.modifiedAt === scanned.modifiedAt) {
@@ -191,7 +232,7 @@ async function processAsset(asset: MediaLibrary.Asset, cache: Map<string, Cached
   }
 
   try {
-    scanned.exactHash = await computeExactHash(localUri, sizeBytes);
+    scanned.exactHash = await computeExactHash(localUri, scanned.sizeBytes);
   } catch (hashErr) {
     console.warn("Exact hashing failed for", asset.id, hashErr);
   }
