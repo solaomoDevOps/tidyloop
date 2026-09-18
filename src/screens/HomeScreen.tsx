@@ -1,15 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Animated, Easing, ActivityIndicator, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { getTotalFreedBytes, getUserName } from "../services/storage/db";
+import { getTotalFreedBytes, getUserName, getLastScanSnapshot, SCAN_CACHE_MAX_AGE_MS } from "../services/storage/db";
 import { getDeviceStorageStats } from "../services/storage/deviceStorage";
-import { formatBytes } from "../components/format";
+import { formatBytes, formatRelativeTime } from "../components/format";
 import { colors } from "../theme/colors";
 import { FREE_TIER_CAP_BYTES } from "../services/plan/planLimits";
 
 interface Props {
   isPro: boolean;
   onStartScan: () => void;
+  /** Called instead of onStartScan when a scan from the last
+   * SCAN_CACHE_MAX_AGE_MS is still on hand and untouched — shows it
+   * straight away rather than re-scanning the whole library again. */
+  onViewCachedResults: () => void;
   onQuickSwipe: () => Promise<void>;
   onOpenSettings: () => void;
 }
@@ -21,10 +25,16 @@ interface Props {
  * without waiting for a full categorized scan; "Full scan" (duplicates,
  * screenshots, etc.) is offered alongside it, not gating everything else.
  */
-export default function HomeScreen({ isPro, onStartScan, onQuickSwipe, onOpenSettings }: Props) {
+export default function HomeScreen({ isPro, onStartScan, onViewCachedResults, onQuickSwipe, onOpenSettings }: Props) {
   const totalFreed = getTotalFreedBytes();
   const storage = useMemo(() => getDeviceStorageStats(), []);
   const firstName = useMemo(() => getUserName()?.split(" ")[0] ?? null, []);
+  const lastScan = useMemo(() => getLastScanSnapshot(), []);
+  const isLastScanFresh = !!lastScan && Date.now() - lastScan.scannedAt < SCAN_CACHE_MAX_AGE_MS;
+  const lastScanBytes = useMemo(
+    () => lastScan?.results.reduce((sum, r) => sum + r.reclaimableBytes, 0) ?? 0,
+    [lastScan]
+  );
 
   const [previewLoading, setPreviewLoading] = useState(false);
 
@@ -139,15 +149,27 @@ export default function HomeScreen({ isPro, onStartScan, onQuickSwipe, onOpenSet
         <Animated.View style={{ transform: [{ scale: pressScale }] }}>
           <Pressable
             style={[styles.actionCard, styles.actionCardSecondary]}
-            onPress={onStartScan}
+            onPress={isLastScanFresh ? onViewCachedResults : onStartScan}
             onPressIn={() => Animated.spring(pressScale, { toValue: 0.96, useNativeDriver: true }).start()}
             onPressOut={() => Animated.spring(pressScale, { toValue: 1, useNativeDriver: true, friction: 4 }).start()}
           >
-            <Text style={[styles.actionCardTitle, styles.actionCardTitleSecondary]}>Full scan</Text>
-            <Text style={styles.actionCardSubtitleSecondary}>Duplicates, screenshots & more</Text>
+            <Text style={[styles.actionCardTitle, styles.actionCardTitleSecondary]}>
+              {isLastScanFresh ? "View results" : "Full scan"}
+            </Text>
+            <Text style={styles.actionCardSubtitleSecondary}>
+              {isLastScanFresh
+                ? `Checked ${formatRelativeTime(lastScan!.scannedAt)} · ${formatBytes(lastScanBytes)} found`
+                : "Duplicates, screenshots & more"}
+            </Text>
           </Pressable>
         </Animated.View>
       </View>
+
+      {isLastScanFresh && (
+        <Pressable onPress={onStartScan} hitSlop={8}>
+          <Text style={styles.rescanLink}>Scan again for fresh results</Text>
+        </Pressable>
+      )}
 
       <Text style={styles.disclosure}>
         Your photos never leave your device — all scanning and review happens locally.
@@ -191,6 +213,7 @@ const styles = StyleSheet.create({
   actionCardTitleSecondary: { color: "#1b2a4a" },
   actionCardSubtitle: { color: "#eaf1ff", fontSize: 11, marginTop: 3, textAlign: "center" },
   actionCardSubtitleSecondary: { color: "#8a92a8", fontSize: 11, marginTop: 3, textAlign: "center" },
+  rescanLink: { fontSize: 12, color: "#8a92a8", textDecorationLine: "underline", marginTop: 2 },
   disclosure: { fontSize: 11, color: "#8a92a8", textAlign: "center", marginTop: 8, paddingHorizontal: 12, paddingBottom: 8 },
   settingsLink: { position: "absolute", top: 60, right: 24, zIndex: 10 },
   settingsLinkText: { color: "#3f7ce0", fontWeight: "600" },

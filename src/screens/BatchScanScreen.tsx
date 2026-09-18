@@ -35,6 +35,7 @@ export default function BatchScanScreen({ onDone, isPro }: Props) {
 
   const heroFloat = useRef(new Animated.Value(0)).current;
   const sparkleAnims = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
+  const wheelSpin = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const floatLoop = Animated.loop(
@@ -57,9 +58,18 @@ export default function BatchScanScreen({ onDone, isPro }: Props) {
     );
     sparkleLoops.forEach((l) => l.start());
 
+    // Runs 0→1 forever; since it maps to 0deg→360deg below, the reset
+    // between iterations lands on a visually identical angle, so the loop
+    // reads as one continuous spin with no snap-back.
+    const wheelLoop = Animated.loop(
+      Animated.timing(wheelSpin, { toValue: 1, duration: 7000, easing: Easing.linear, useNativeDriver: true })
+    );
+    wheelLoop.start();
+
     return () => {
       floatLoop.stop();
       sparkleLoops.forEach((l) => l.stop());
+      wheelLoop.stop();
     };
   }, []);
 
@@ -154,7 +164,12 @@ export default function BatchScanScreen({ onDone, isPro }: Props) {
             <Text style={styles.proBadgeText}>⚡ Pro speed — 2x concurrency</Text>
           </View>
         )}
-        <Text style={styles.reclaimedSoFar}>{formatBytes(displayedTotal)} found so far</Text>
+
+        <ScanningWheel spin={wheelSpin} />
+
+        <Text style={styles.reclaimedSoFar}>
+          {displayedTotal > 0 ? `${formatBytes(displayedTotal)} found so far` : "Scanning in progress…"}
+        </Text>
 
         <View style={styles.list}>
           {SCAN_CATEGORIES.map((cat) => (
@@ -173,6 +188,29 @@ const sparklePositions = [
   { top: "8%", right: "14%" } as const,
   { top: "22%", right: "8%" } as const,
 ];
+
+const WHEEL_RADIUS = 52;
+const WHEEL_ITEM_SIZE = 38;
+
+/** A continuously-spinning ring of the category icons — replaces a raw
+ * "X of Y checked" counter, which reads as a boring grind on one number,
+ * with something that just feels like active, ongoing work. */
+function ScanningWheel({ spin }: { spin: Animated.Value }) {
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  return (
+    <Animated.View style={[wheelStyles.wheel, { transform: [{ rotate }] }]}>
+      {SCAN_CATEGORIES.map((cat, i) => {
+        const angle = (360 / SCAN_CATEGORIES.length) * i;
+        return (
+          <View key={cat.id} style={[wheelStyles.wheelItem, { transform: [{ rotate: `${angle}deg` }, { translateY: -WHEEL_RADIUS }] }]}>
+            <Text style={wheelStyles.wheelIcon}>{cat.icon}</Text>
+          </View>
+        );
+      })}
+      <View style={wheelStyles.wheelHub} />
+    </Animated.View>
+  );
+}
 
 function CategoryRow({ label, icon, state }: { label: string; icon: string; state: CategoryUiState }) {
   const barWidth = useRef(new Animated.Value(0)).current;
@@ -217,9 +255,6 @@ function CategoryRow({ label, icon, state }: { label: string; icon: string; stat
             style={[rowStyles.progressFill, { width: barWidth.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) }]}
           />
         </View>
-        {state.status === "active" && state.totalCount > 0 && (
-          <Text style={rowStyles.liveCount}>{state.scannedCount} of {state.totalCount} checked</Text>
-        )}
         {state.status === "done" && (
           <Text style={rowStyles.resultText}>
             {state.itemCount} item{state.itemCount === 1 ? "" : "s"} · {formatBytes(state.reclaimableBytes)}
@@ -265,7 +300,31 @@ const rowStyles = StyleSheet.create({
   labelPending: { color: "rgba(255,255,255,0.5)" },
   progressTrack: { height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.15)", overflow: "hidden" },
   progressFill: { height: "100%", backgroundColor: "#7fd88a", borderRadius: 3 },
-  liveCount: { fontSize: 11, color: "#cfe0ff" },
   resultText: { fontSize: 11, color: "#cfe0ff" },
   check: { fontSize: 20, color: "#7fd88a", fontWeight: "800" },
+});
+
+const wheelStyles = StyleSheet.create({
+  wheel: { width: WHEEL_RADIUS * 2, height: WHEEL_RADIUS * 2, alignSelf: "center", marginVertical: 4 },
+  wheelItem: {
+    position: "absolute",
+    width: WHEEL_ITEM_SIZE,
+    height: WHEEL_ITEM_SIZE,
+    left: WHEEL_RADIUS - WHEEL_ITEM_SIZE / 2,
+    top: WHEEL_RADIUS - WHEEL_ITEM_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: WHEEL_ITEM_SIZE / 2,
+  },
+  wheelIcon: { fontSize: 18 },
+  wheelHub: {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "rgba(255,255,255,0.4)",
+    left: WHEEL_RADIUS - 7,
+    top: WHEEL_RADIUS - 7,
+  },
 });

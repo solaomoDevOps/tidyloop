@@ -11,7 +11,7 @@
  */
 
 import * as SQLite from "expo-sqlite";
-import { ScannedAsset, ReviewAction } from "../../types";
+import { ScannedAsset, ReviewAction, ScanCategoryResult } from "../../types";
 
 const db = SQLite.openDatabaseSync("tidyloop.db");
 
@@ -206,6 +206,48 @@ export function setUserPhone(phone: string): void {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
     [APP_STATE_KEY_USER_PHONE, phone]
   );
+}
+
+export const SCAN_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const APP_STATE_KEY_LAST_SCAN_RESULTS = "lastScanResults";
+const APP_STATE_KEY_LAST_SCAN_AT = "lastScanAt";
+
+export interface LastScanSnapshot {
+  results: ScanCategoryResult[];
+  scannedAt: number;
+}
+
+/** Persists the last full scan so re-opening the app can show it straight
+ * away instead of re-scanning every time — valid for SCAN_CACHE_MAX_AGE_MS.
+ * Cleared via clearLastScanSnapshot() the moment the user actually deletes
+ * or compresses something, since the results are stale at that point. */
+export function getLastScanSnapshot(): LastScanSnapshot | null {
+  const resultsRow = db.getFirstSync<{ value: string }>(`SELECT value FROM app_state WHERE key = ?;`, [APP_STATE_KEY_LAST_SCAN_RESULTS]);
+  const atRow = db.getFirstSync<{ value: string }>(`SELECT value FROM app_state WHERE key = ?;`, [APP_STATE_KEY_LAST_SCAN_AT]);
+  if (!resultsRow?.value || !atRow?.value) return null;
+  try {
+    return { results: JSON.parse(resultsRow.value) as ScanCategoryResult[], scannedAt: Number(atRow.value) };
+  } catch {
+    return null;
+  }
+}
+
+export function setLastScanSnapshot(results: ScanCategoryResult[], scannedAt: number): void {
+  db.runSync(
+    `INSERT INTO app_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+    [APP_STATE_KEY_LAST_SCAN_RESULTS, JSON.stringify(results)]
+  );
+  db.runSync(
+    `INSERT INTO app_state (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+    [APP_STATE_KEY_LAST_SCAN_AT, String(scannedAt)]
+  );
+}
+
+export function clearLastScanSnapshot(): void {
+  db.runSync(`DELETE FROM app_state WHERE key IN (?, ?);`, [APP_STATE_KEY_LAST_SCAN_RESULTS, APP_STATE_KEY_LAST_SCAN_AT]);
 }
 
 const APP_STATE_KEY_BACKGROUND_SCAN_ENABLED = "backgroundScanEnabled";

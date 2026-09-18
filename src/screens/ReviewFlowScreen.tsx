@@ -6,7 +6,7 @@ import { ScannedAsset, UsefulnessScore, ReviewAction, DuplicateGroup } from "../
 import { deleteAssets } from "../services/scanning/photoScanner";
 import { backupAssets } from "../services/backup/localBackup";
 import { compressAssets } from "../services/compression/compress";
-import { logFreedSpace } from "../services/storage/db";
+import { logFreedSpace, clearLastScanSnapshot } from "../services/storage/db";
 import { getRemainingFreeBytes } from "../services/plan/planLimits";
 import { formatBytes } from "../components/format";
 
@@ -141,6 +141,13 @@ export default function ReviewFlowScreen({ queue, duplicateGroups, prebuiltDecis
     }
 
     setStage(null);
+
+    // Anything actually changed on disk — the cached "last scan" results
+    // Home shows instantly no longer reflect reality, so drop it rather
+    // than let a re-opened app show items that are already gone.
+    if ((assetsToDelete.length > 0 && deleteConfirmed) || compressedCount > 0) {
+      clearLastScanSnapshot();
+    }
 
     const parts: string[] = [];
     if (assetsToDelete.length > 0 && deleteConfirmed) {

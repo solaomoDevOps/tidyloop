@@ -20,6 +20,9 @@ import {
   setHasSubmittedLead,
   getUserPhone,
   getBackgroundScanEnabled,
+  getLastScanSnapshot,
+  setLastScanSnapshot,
+  SCAN_CACHE_MAX_AGE_MS,
 } from "./src/services/storage/db";
 import { scoreAsset } from "./src/services/scoring/usefulnessScorer";
 import { getQuickPreviewAssets } from "./src/services/scanning/photoScanner";
@@ -153,6 +156,15 @@ export default function App() {
             <HomeScreen
               isPro={isPro}
               onStartScan={() => props.navigation.navigate("Scanning")}
+              onViewCachedResults={() => {
+                const snapshot = getLastScanSnapshot();
+                if (snapshot) {
+                  setCategoryResults(snapshot.results);
+                  props.navigation.navigate("Results");
+                } else {
+                  props.navigation.navigate("Scanning");
+                }
+              }}
               onOpenSettings={() => props.navigation.navigate("Settings")}
               onQuickSwipe={async () => {
                 try {
@@ -182,6 +194,7 @@ export default function App() {
                   return;
                 }
                 setCategoryResults(results);
+                setLastScanSnapshot(results, Date.now());
                 props.navigation.replace("Results");
               }}
             />
